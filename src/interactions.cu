@@ -51,20 +51,63 @@ __host__ __device__ void scatterRay(
     const Material &m,
     thrust::default_random_engine &rng)
 {
-    // TODO: implement this.
-    // A basic implementation of pure-diffuse shading will just call the
-    // calculateRandomDirectionInHemisphere defined above.
-    // deals with handling spawning rays according to material properties like reflective and refractive
+    thrust::uniform_real_distribution<float> u01(0, 1);
+    float probability = u01(rng);
 
-    // spawn a new ray
-    pathSegment.ray.direction = calculateRandomDirectionInHemisphere(normal, rng);
-    pathSegment.ray.origin = intersect + pathSegment.ray.direction * EPSILON; // add some offset so it doesn't self intersect
+    // depending on material properties, choose between m.reflective, refractive, and diffuse
+    int num_properties = (int)m.hasReflective + (int)m.hasRefractive + 1;
+    float reflect_prob = (float)m.hasReflective / (float)num_properties;
+    float refract_prob = (float)m.hasRefractive / (float)num_properties;
 
-    /*glm::vec3 bsdf = m.color / PI;
-    float cosTheta = glm::max(0.f, glm::dot(normal, pathSegment.ray.direction));
+    glm::vec3 resulting_color = m.color;
 
-    float pdf = cosTheta / PI;
-    if (pdf > EPSILON)
-        pathSegment.color *= bsdf * cosTheta / pdf;*/
-    pathSegment.color *= m.color;
+    // REFLECTIVE
+    if (probability < reflect_prob) {
+        // get the new direction by reflecting the ray direction by the normal
+        // sample around a lobe described by specular, not completely reflective in this case???
+
+        pathSegment.ray.direction = glm::reflect(pathSegment.ray.direction, normal);
+        pathSegment.ray.origin = intersect + normal * EPSILON;
+        resulting_color /= reflect_prob;
+    } 
+    // REFRACTIVE
+    else if (probability < refract_prob + reflect_prob) {
+        // from air to medium
+        float n_incident = 1.0;
+        float n_outgoing =  m.indexOfRefraction;
+        glm::vec3 n = normal;
+
+        //check to see if we are entering or exiting the (supposedly thick) material
+        float incident_dot_normal = glm::dot(normal, pathSegment.ray.direction);
+        if (incident_dot_normal > 0.0) { // from medium to air
+            n_incident = n_outgoing;
+            n_outgoing = 1.0;
+            n = -n; // normal is negative if we are in the medium (since normal points out to air)
+        }
+
+        // check to see if we are refracting or reflecting from this angle
+        glm::vec3 refraction_dir = glm::refract(pathSegment.ray.direction, n, n_incident / n_outgoing);
+
+        // returns 0 for total internal reflection, so reflection occurs here
+        if (glm::length(refraction_dir) < EPSILON) {
+            pathSegment.ray.direction = glm::reflect(pathSegment.ray.direction, n);
+            pathSegment.ray.origin = intersect + n * EPSILON; // make sure it doesn't self intersect, stay within current medium
+        } else {
+            // refraction occurs here
+            pathSegment.ray.direction = glm::normalize(refraction_dir);
+            pathSegment.ray.origin = intersect - n * EPSILON; // make sure it doesn't self intersect, stay within outgoing medium
+        }
+        resulting_color /= refract_prob;
+
+    } 
+    // DIFFUSE
+    else {
+        // diffuse
+        pathSegment.ray.direction = calculateRandomDirectionInHemisphere(normal, rng);
+        pathSegment.ray.origin = intersect + pathSegment.ray.direction * EPSILON; // add some offset so it doesn't self intersect
+        resulting_color /= 1. - (refract_prob + reflect_prob);
+    }
+
+    pathSegment.color *= resulting_color;
+
 }
