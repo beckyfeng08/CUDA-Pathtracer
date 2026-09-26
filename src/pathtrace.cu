@@ -150,9 +150,14 @@ __global__ void generateRayFromCamera(Camera cam, int iter, int traceDepth, Path
         segment.color = glm::vec3(1.0f, 1.0f, 1.0f);
 
         // TODO: implement antialiasing by jittering the ray
+        thrust::default_random_engine rng = makeSeededRandomEngine(iter, index, traceDepth);
+        thrust::uniform_real_distribution<float> u01(0, 1);
+        float offsetx = u01(rng)- 0.5; // -0.5 to 0.5
+        float offsety = u01(rng)- 0.5; // -0.5 to 0.5
+
         segment.ray.direction = glm::normalize(cam.view
-            - cam.right * cam.pixelLength.x * ((float)x - (float)cam.resolution.x * 0.5f)
-            - cam.up * cam.pixelLength.y * ((float)y - (float)cam.resolution.y * 0.5f)
+            - cam.right * cam.pixelLength.x * (((float)x + offsetx) - (float)cam.resolution.x * 0.5f)
+            - cam.up * cam.pixelLength.y * (((float)y + offsety) - (float)cam.resolution.y * 0.5f)
         );
 
         segment.pixelIndex = index;
@@ -360,6 +365,8 @@ void pathtrace(uchar4* pbo, int frame, int iter)
     // TODO: perform one iteration of path tracing
 
     generateRayFromCamera<<<blocksPerGrid2d, blockSize2d>>>(cam, iter, traceDepth, dev_paths); // set ray origin and ray dir, in dev_paths (pathsegments)
+    // multiple iterations?
+
     checkCUDAError("generate camera ray");
 
     int depth = 0;
