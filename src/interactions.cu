@@ -86,7 +86,7 @@ __host__ __device__ void scatterRay(
         }
 
         // check to see if we are refracting or reflecting from this angle
-        glm::vec3 refraction_dir = glm::refract(pathSegment.ray.direction, n, n_incident / n_outgoing);
+        glm::vec3 refraction_dir = glm::refract(glm::normalize(pathSegment.ray.direction), glm::normalize(n), n_incident/n_outgoing);
 
         // returns 0 for total internal reflection, so reflection occurs here
         if (glm::length(refraction_dir) < EPSILON) {
@@ -105,7 +105,7 @@ __host__ __device__ void scatterRay(
         // diffuse
         pathSegment.ray.direction = calculateRandomDirectionInHemisphere(normal, rng);
         pathSegment.ray.origin = intersect + pathSegment.ray.direction * EPSILON; // add some offset so it doesn't self intersect
-        resulting_color /= 1. - (refract_prob + reflect_prob);
+        resulting_color /= (1. - (refract_prob + reflect_prob));
     }
 
     pathSegment.color *= resulting_color;
