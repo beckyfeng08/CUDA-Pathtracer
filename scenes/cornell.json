@@ -87,7 +87,7 @@
         {
             "TYPE":"sphere",
             "MATERIAL":"specular_white",
-            "TRANS":[0.0,4.0,0.0],
+            "TRANS":[-1.0,4.0,-1.0],
             "ROTAT":[0.0,0.0,0.0],
             "SCALE":[6.0,6.0,6.0]
         }

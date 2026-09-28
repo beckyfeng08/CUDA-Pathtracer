@@ -70,30 +70,18 @@ __host__ __device__ glm::vec3 samplePerfectSpecularReflection(
 }
 
 __host__ __device__ glm::vec3 samplePerfectSpecularTransmission(
+    float eta,
     PathSegment & pathSegment,
     glm::vec3 intersect,
     glm::vec3 normal,
     const Material &m) 
 {
-    
- // from air to medium
-    float n_incident = 1.0;
-    float n_outgoing =  m.indexOfRefraction;
-    glm::vec3 n = normal;
 
-    //check to see if we are entering or exiting the (supposedly thick) material
-    float incident_dot_normal = glm::dot(normal, pathSegment.ray.direction);
-    if (incident_dot_normal > 0.0) { // from medium to air
-        n_incident = n_outgoing;
-        n_outgoing = 1.0;
-        n = -n; // normal is negative if we are in the medium (since normal points out to air)
-    }
-
-    // check to see if we are refracting or reflecting from this angle
-    glm::vec3 refraction_dir = glm::refract(glm::normalize(pathSegment.ray.direction), glm::normalize(n), n_incident/n_outgoing);
+    glm::vec3 refraction_dir = glm::refract(pathSegment.ray.direction, normal, eta);
 
     pathSegment.ray.direction = glm::normalize(refraction_dir);
-    pathSegment.ray.origin = intersect + pathSegment.ray.direction * EPSILON; // make sure it doesn't self intersect, stay within outgoing medium
+    pathSegment.ray.origin =
+        intersect + pathSegment.ray.direction * EPSILON *  100.f;
 
     return m.color;
 }
@@ -130,57 +118,83 @@ __host__ __device__ glm::vec3 sampleDielectric(
 {
     glm::vec3 resulting_color = m.color;
     
-    float n_i = 1.0;
-    float n_t = m.indexOfRefraction;
-    glm::vec3 n = normal;
+    float cosThetaI = glm::dot(normal, -pathSegment.ray.direction);
 
-    float costhetaI = glm::dot(n, pathSegment.ray.direction);
-    
-    // determine if ray exits the dielectric medium or enters
-    if (costhetaI > 0.f) {
-        float temp = n_i;
-        n_i = n_t;
-        n_t = temp;
-        costhetaI = glm::abs(costhetaI);
-        n = -normal;
+    float etaI = 1.0f;
+    float etaT = m.indexOfRefraction;
+
+    if (cosThetaI < 0.0f)
+    {
+        // exiting the material
+        cosThetaI = -cosThetaI;
+        etaI = m.indexOfRefraction;
+        etaT = 1.0f;
     }
 
-    float F = computeFresnelReflectance(costhetaI, n_i, n_t);
+    float eta = etaI / etaT;
+
+    cosThetaI = glm::clamp(cosThetaI, 0.0f, 1.0f);
+
+    float sin2ThetaI = 1.0f - cosThetaI * cosThetaI;
+    float sin2ThetaT = sin2ThetaI * eta * eta;
+
+    float F;
+
+    if (sin2ThetaT >= 1.0f)
+    {
+        // Total internal reflection
+        F = 1.0f;
+    }
+    else
+    {
+        float cosThetaT = glm::sqrt(1.0f - sin2ThetaT);
+
+        float rPerp =
+            (etaI * cosThetaI - etaT * cosThetaT) /
+            (etaI * cosThetaI + etaT * cosThetaT);
+
+        float rPar =
+            (etaT * cosThetaI - etaI * cosThetaT) /
+            (etaT * cosThetaI + etaI * cosThetaT);
+
+        F = 0.5f * (rPerp * rPerp + rPar * rPar);
+    }
+
     thrust::uniform_real_distribution<float> u01(0, 1);
     float probability = u01(rng);
 
-    // TODO: uncomment when done
     // choose with biased probability
-    //if (probability < F) {
-       /* resulting_color = samplePerfectSpecularReflection(
+    if (probability < F) {
+        resulting_color = samplePerfectSpecularReflection(
             pathSegment,
             intersect,
             normal,
             m);
-        resulting_color /= F;*/
-    //} else {
+        //resulting_color /= F;
+    } else {
         resulting_color = samplePerfectSpecularTransmission(
+            eta,
             pathSegment,
             intersect,
             normal,
             m);
-       
-        //resulting_color /= 1. - F; // MAKE SURE DENOM IS NOT 0
-    //}
+        //resulting_color /= 1. - F;
+    }
+
     return resulting_color;
 }
 
 __host__ __device__ void sampleDirectLighting(
-    PathSegment & pathSegment,
+    PathSegment& pathSegment,
     glm::vec3 intersect,
     glm::vec3 normal,
-    const Material* materials
-    thrust::default_random_engine &rng) 
+    Material* materials,
+    thrust::default_random_engine& rng)
 {
     // get all the emitting materials
     // randomly select form the emitting material
     // sample whatever shape it is??
-    continue;
+    return;
 }
 
 
@@ -201,6 +215,7 @@ __host__ __device__ void scatterRay(
             normal,
             m,
             rng);
+
         pathSegment.color *= resulting_color;
     }
     // DIFFUSE
