@@ -383,6 +383,7 @@ void pathtrace(uchar4* pbo, int frame, int iter)
             dev_materials
         );
         checkCUDAError("Shading material");
+   
 
         // Stream compact away rays that don't intersect
         

@@ -95,13 +95,11 @@ __host__ __device__ glm::vec3 sampleDiffuse(
     pathSegment.ray.direction = calculateRandomDirectionInHemisphere(normal, rng);
     pathSegment.ray.origin = intersect + pathSegment.ray.direction * EPSILON;
     return m.color;
-
 }
 
 // fresnel reflection from dielectrics and unpolarized light
 __host__ __device__ float computeFresnelReflectance(float costhetaI, float n_i, float n_t)
 {
-    costhetaI = glm::clamp(costhetaI, -1.f, 1.f);
     // swap indices of refraction if needed
     bool entering = costhetaI > 0.f;
     if (!entering) {
@@ -131,7 +129,7 @@ __host__ __device__ glm::vec3 sampleDielectric(
 )
 {
     glm::vec3 resulting_color = m.color;
-
+    
     float n_i = 1.0;
     float n_t = m.indexOfRefraction;
     glm::vec3 n = normal;
@@ -151,6 +149,7 @@ __host__ __device__ glm::vec3 sampleDielectric(
     thrust::uniform_real_distribution<float> u01(0, 1);
     float probability = u01(rng);
 
+    // TODO: uncomment when done
     // choose with biased probability
     //if (probability < F) {
        /* resulting_color = samplePerfectSpecularReflection(
@@ -165,7 +164,8 @@ __host__ __device__ glm::vec3 sampleDielectric(
             intersect,
             normal,
             m);
-        resulting_color /= 1. - F;
+       
+        //resulting_color /= 1. - F; // MAKE SURE DENOM IS NOT 0
     //}
     return resulting_color;
 }
@@ -187,6 +187,7 @@ __host__ __device__ void scatterRay(
             normal,
             m,
             rng);
+        pathSegment.color *= resulting_color;
     }
     // DIFFUSE
     else {
@@ -196,29 +197,6 @@ __host__ __device__ void scatterRay(
             normal,
             m,
             rng); 
+        pathSegment.color *= resulting_color;
     }
-    pathSegment.color *= resulting_color;
-    
-    // // PERFECT SPECULAR
-    // if (probability < reflect_prob) {
-    //     resulting_color = samplePerfectSpecularReflection(
-    //         pathSegment,
-    //         intersect,
-    //         normal,
-    //         m);
-
-    // resulting_color /= reflect_prob;
-    // } 
-    // // REFRACTIVE
-    // else if (probability < refract_prob + reflect_prob) {
-    //     resulting_color = sampleRefractive(
-    //         pathSegment,
-    //         intersect,
-    //         normal,
-    //         m); 
-
-    //     resulting_color /= refract_prob;
-    // }
-    
-
 }
