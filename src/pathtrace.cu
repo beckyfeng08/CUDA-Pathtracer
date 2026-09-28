@@ -114,6 +114,7 @@ void pathtraceInit(Scene* scene)
 
     // TODO: initialize any extra device memeory you need
 
+
     checkCUDAError("pathtraceInit");
 }
 
@@ -258,7 +259,6 @@ __global__ void shadeMaterial(
     PathSegment& pathSegment = pathSegments[idx];
 
   
-
     // If the material indicates that the object was a light, "light" the ray
     if (material.emittance > 0.0f) {
         pathSegment.color *= (material.color * material.emittance);
@@ -278,6 +278,15 @@ __global__ void shadeMaterial(
         material,
         rng);
     // after this, then our pathSegment should be completely updated here for the ray
+
+    // TODO: do direct lighting estimates
+    sampleDirectLighting(
+        pathSegment,
+        intersectPoint,
+        intersection.surfaceNormal,
+        materials,
+        rng); // materials list will have all emitting materials
+
     pathSegment.remainingBounces -= 1;
 
     if (pathSegment.remainingBounces <= 0) { // no contributionn if no more bounces
@@ -367,11 +376,11 @@ void pathtrace(uchar4* pbo, int frame, int iter)
         depth++;
 
         // zip up with dev_paths, so the indices match
-        //auto dev_zipped = thrust::make_zip_iterator(thrust::make_tuple(dev_intersections, dev_paths));
-        //auto dev_zipped_end = thrust::make_zip_iterator(thrust::make_tuple(dev_intersections + num_paths, dev_paths + num_paths));
+        auto dev_zipped = thrust::make_zip_iterator(thrust::make_tuple(dev_intersections, dev_paths));
+        auto dev_zipped_end = thrust::make_zip_iterator(thrust::make_tuple(dev_intersections + num_paths, dev_paths + num_paths));
 
-        //// making contiguous in memory, sort by materialID
-        //thrust::sort(thrust::device, dev_zipped, dev_zipped_end, sort_by_material());
+        // making contiguous in memory, sort by materialID
+        thrust::sort(thrust::device, dev_zipped, dev_zipped_end, sort_by_material());
 
         // apply bsdf and populate color of paths
         shadeMaterial<<<numblocksPathSegmentTracing, blockSize1d>>>(

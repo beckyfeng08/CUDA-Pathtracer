@@ -4,6 +4,7 @@
 #include <glm/gtc/constants.hpp>
 #include <thrust/random.h>
 
+// -------- DIFFUSE RELATED FUNCTIONS --------- //
 __host__ __device__ glm::vec3 calculateRandomDirectionInHemisphere(
     glm::vec3 normal,
     thrust::default_random_engine &rng)
@@ -43,7 +44,20 @@ __host__ __device__ glm::vec3 calculateRandomDirectionInHemisphere(
         + cos(around) * over * perpendicularDirection1
         + sin(around) * over * perpendicularDirection2;
 }
+__host__ __device__ glm::vec3 sampleDiffuse(
+    PathSegment & pathSegment,
+    glm::vec3 intersect,
+    glm::vec3 normal,
+    const Material &m,
+    thrust::default_random_engine &rng)
+{
+    pathSegment.ray.direction = calculateRandomDirectionInHemisphere(normal, rng);
+    pathSegment.ray.origin = intersect + pathSegment.ray.direction * EPSILON;
+    return m.color;
+}
 
+
+// -------- DIELECTRIC RELATED FUNCTIONS --------- //
 __host__ __device__ glm::vec3 samplePerfectSpecularReflection(
     PathSegment & pathSegment,
     glm::vec3 intersect,
@@ -55,7 +69,6 @@ __host__ __device__ glm::vec3 samplePerfectSpecularReflection(
     return m.color;
 }
 
-// TODO
 __host__ __device__ glm::vec3 samplePerfectSpecularTransmission(
     PathSegment & pathSegment,
     glm::vec3 intersect,
@@ -82,18 +95,6 @@ __host__ __device__ glm::vec3 samplePerfectSpecularTransmission(
     pathSegment.ray.direction = glm::normalize(refraction_dir);
     pathSegment.ray.origin = intersect + pathSegment.ray.direction * EPSILON; // make sure it doesn't self intersect, stay within outgoing medium
 
-    return m.color;
-}
-
-__host__ __device__ glm::vec3 sampleDiffuse(
-    PathSegment & pathSegment,
-    glm::vec3 intersect,
-    glm::vec3 normal,
-    const Material &m,
-    thrust::default_random_engine &rng)
-{
-    pathSegment.ray.direction = calculateRandomDirectionInHemisphere(normal, rng);
-    pathSegment.ray.origin = intersect + pathSegment.ray.direction * EPSILON;
     return m.color;
 }
 
@@ -125,8 +126,7 @@ __host__ __device__ glm::vec3 sampleDielectric(
     glm::vec3 intersect,
     glm::vec3 normal,
     const Material &m,
-    thrust::default_random_engine &rng
-)
+    thrust::default_random_engine &rng)
 {
     glm::vec3 resulting_color = m.color;
     
@@ -169,6 +169,20 @@ __host__ __device__ glm::vec3 sampleDielectric(
     //}
     return resulting_color;
 }
+
+__host__ __device__ void sampleDirectLighting(
+    PathSegment & pathSegment,
+    glm::vec3 intersect,
+    glm::vec3 normal,
+    const Material* materials
+    thrust::default_random_engine &rng) 
+{
+    // get all the emitting materials
+    // randomly select form the emitting material
+    // sample whatever shape it is??
+    continue;
+}
+
 
 __host__ __device__ void scatterRay(
     PathSegment & pathSegment,
