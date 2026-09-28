@@ -101,7 +101,7 @@ __host__ __device__ glm::vec3 sampleDiffuse(
 // fresnel reflection from dielectrics and unpolarized light
 __host__ __device__ float computeFresnelReflectance(float costhetaI, float n_i, float n_t)
 {
-    costhetaI = glm::clamp(-1,1);
+    costhetaI = glm::clamp(costhetaI, -1.f, 1.f);
     // swap indices of refraction if needed
     bool entering = costhetaI > 0.f;
     if (!entering) {
@@ -113,12 +113,12 @@ __host__ __device__ float computeFresnelReflectance(float costhetaI, float n_i, 
     // compute costhetaT with snells law
     float sinThetaI = glm::sqrt(glm::max(0., 1. - costhetaI * costhetaI));
     float sinThetaT = n_i / n_t * sinThetaI;
-    if (sinThteaT >= 1) return 1; // total internal reflection
+    if (sinThetaT >= 1) return 1; // total internal reflection
 
-    float cosThetaT = glm::sqrt(glm::max(0., 1 - sinThetaT * sinThetaT));
+    float cosThetaT = glm::sqrt(1 - sinThetaT * sinThetaT);
 
-    float r_par = ((n_t * cosThetaI) - (n_i * cosThetaT)) / ((n_t * cosThetaI) + (n_i * cosThetaT));
-    float r_perp =  ((n_i * cosThetaI) - (n_t * cosThetaT)) / ((n_i * cosThetaI) + (n_t * cosThetaT));
+    float r_par = ((n_t * costhetaI) - (n_i * cosThetaT)) / ((n_t * costhetaI) + (n_i * cosThetaT));
+    float r_perp =  ((n_i * costhetaI) - (n_t * cosThetaT)) / ((n_i * costhetaI) + (n_t * cosThetaT));
     return (r_par * r_par + r_perp * r_perp) * 0.5;
 }
 
@@ -130,7 +130,7 @@ __host__ __device__ glm::vec3 sampleDielectric(
     thrust::default_random_engine &rng
 )
 {
-    glm:vec3 resulting_color = m.color;
+    glm::vec3 resulting_color = m.color;
 
     float n_i = 1.0;
     float n_t = m.indexOfRefraction;
@@ -152,21 +152,21 @@ __host__ __device__ glm::vec3 sampleDielectric(
     float probability = u01(rng);
 
     // choose with biased probability
-    if (probability < F) {
-        resulting_color = samplePerfectSpecularReflection(
+    //if (probability < F) {
+       /* resulting_color = samplePerfectSpecularReflection(
             pathSegment,
             intersect,
             normal,
             m);
-        resulting_color /= F;
-    } else {
+        resulting_color /= F;*/
+    //} else {
         resulting_color = samplePerfectSpecularTransmission(
             pathSegment,
             intersect,
             normal,
             m);
         resulting_color /= 1. - F;
-    }
+    //}
     return resulting_color;
 }
 
@@ -186,7 +186,7 @@ __host__ __device__ void scatterRay(
             intersect,
             normal,
             m,
-            rng)
+            rng);
     }
     // DIFFUSE
     else {

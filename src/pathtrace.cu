@@ -367,11 +367,11 @@ void pathtrace(uchar4* pbo, int frame, int iter)
         depth++;
 
         // zip up with dev_paths, so the indices match
-        auto dev_zipped = thrust::make_zip_iterator(thrust::make_tuple(dev_intersections, dev_paths));
-        auto dev_zipped_end = thrust::make_zip_iterator(thrust::make_tuple(dev_intersections + num_paths, dev_paths + num_paths));
+        //auto dev_zipped = thrust::make_zip_iterator(thrust::make_tuple(dev_intersections, dev_paths));
+        //auto dev_zipped_end = thrust::make_zip_iterator(thrust::make_tuple(dev_intersections + num_paths, dev_paths + num_paths));
 
-        // making contiguous in memory, sort by materialID
-        thrust::sort(thrust::device, dev_zipped, dev_zipped_end, sort_by_material());
+        //// making contiguous in memory, sort by materialID
+        //thrust::sort(thrust::device, dev_zipped, dev_zipped_end, sort_by_material());
 
         // apply bsdf and populate color of paths
         shadeMaterial<<<numblocksPathSegmentTracing, blockSize1d>>>(
