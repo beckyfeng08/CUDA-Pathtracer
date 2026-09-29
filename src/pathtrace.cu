@@ -236,7 +236,16 @@ __global__ void computeIntersections(
             if (light.type == AREALIGHT)
             {
                 // use a cube as a dummy
-                Geom placeholdersquare = {GeomType.CUBE, 0, light.translation, light.rotation, glm::vec3(light.areaLight.x * light.scale.x, light.areaLight.y * light.scale.y, EPSILON * 10.f), light.transform, light.inverseTransform, light.invTranspose};
+                Geom placeholdersquare = {
+                    GeomType.CUBE, 
+                    0, 
+                    light.translation,
+                    light.rotation, 
+                    glm::vec3(light.areaLight.x * light.scale.x, EPSILON * 10.f, light.areaLight.y * light.scale.y),
+                    light.transform, 
+                    light.inverseTransform, 
+                    light.invTranspose
+                };
 
                 t = boxIntersectionTest(placeholdersquare, pathSegment.ray, tmp_intersect, tmp_normal, outside);
 
