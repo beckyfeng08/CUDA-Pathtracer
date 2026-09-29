@@ -64,6 +64,44 @@ void Scene::loadFromJSON(const std::string& jsonName)
         MatNameToID[name] = materials.size();
         materials.emplace_back(newMaterial);
     }
+    const auto& lightsData = data["Lights"];
+    for (const auto& p : lightsData)
+    {
+        const auto& type = p["TYPE"];
+        Light newLight;
+
+        if (p["TYPE"] == "AREA")
+        {
+            newLight.type = AREALIGHT;
+            newLight.areaLight.x = p["x"];
+            newLight.areaLight.y = p["y"];
+        }
+        else if (p["TYPE"] == "POINT")
+        {
+            newLight.type = POINTLIGHT;
+            newLight.pointLight.decay = p["DECAY"];
+            newLight.pointLight.range = p["RANGE"];
+        }
+        const auto& col = p["RGB"];
+        newLight.color = glm::vec3(col[0], col[1], col[2]);
+        newLight.intensity = p["INTENSITY"];
+
+        const auto& trans = p["TRANS"];
+        const auto& rotat = p["ROTAT"];
+        const auto& scale = p["SCALE"];
+        newLight.translation = glm::vec3(trans[0], trans[1], trans[2]);
+        newLight.rotation = glm::vec3(rotat[0], rotat[1], rotat[2]);
+        newLight.scale = glm::vec3(scale[0], scale[1], scale[2]);
+        newLight.transform = utilityCore::buildTransformationMatrix(
+        newLight.translation, newLight.rotation, newLight.scale);
+        newLight.inverseTransform = glm::inverse(newLight.transform);
+        newLight.invTranspose = glm::inverseTranspose(newLight.transform);
+
+        lights.push_back(newLight);
+
+
+    }
+
     const auto& objectsData = data["Objects"];
     for (const auto& p : objectsData)
     {

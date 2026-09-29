@@ -15,6 +15,12 @@ enum GeomType
     CUBE
 };
 
+enum LightType
+{
+    AREALIGHT,
+    POINTLIGHT
+}
+
 struct Ray
 {
     glm::vec3 origin;
@@ -43,6 +49,31 @@ struct Material
     float indexOfRefraction;
     float emittance;
 };
+
+struct Light
+{
+    glm::vec3 color;
+    struct {
+        float x;
+        float y;
+    } areaLight;
+    
+    struct  {
+        float decay;
+        float range;
+    } pointLight;
+
+    enum LightType type;
+
+    float intensity;
+
+    glm::vec3 translation;
+    glm::vec3 rotation;
+    glm::vec3 scale;
+    glm::mat4 transform;
+    glm::mat4 inverseTransform;
+    glm::mat4 invTranspose;
+}
 
 struct Camera
 {
@@ -81,4 +112,6 @@ struct ShadeableIntersection
   float t;
   glm::vec3 surfaceNormal;
   int materialId;
+  int isLight;
+  int lightId;
 };

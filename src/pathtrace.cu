@@ -81,6 +81,7 @@ static GuiDataContainer* guiData = NULL;
 static glm::vec3* dev_image = NULL;
 static Geom* dev_geoms = NULL;
 static Material* dev_materials = NULL;
+static Light* dev_lights = NULL;
 static PathSegment* dev_paths = NULL;
 static ShadeableIntersection* dev_intersections = NULL;
 // TODO: static variables for device memory, any extra info you need, etc
@@ -109,6 +110,9 @@ void pathtraceInit(Scene* scene)
     cudaMalloc(&dev_materials, scene->materials.size() * sizeof(Material));
     cudaMemcpy(dev_materials, scene->materials.data(), scene->materials.size() * sizeof(Material), cudaMemcpyHostToDevice);
 
+    cudaMalloc(&dev_lights, scene->lights.size() * sizeof(Light));
+    cudaMemcpy(dev_lights, scene->lights.data(), scene->lights.size() * sizeof(Light), cudaMemcpyHostToDevice);
+
     cudaMalloc(&dev_intersections, pixelcount * sizeof(ShadeableIntersection));
     cudaMemset(dev_intersections, 0, pixelcount * sizeof(ShadeableIntersection));
 
@@ -125,6 +129,7 @@ void pathtraceFree()
     cudaFree(dev_geoms);
     cudaFree(dev_materials);
     cudaFree(dev_intersections);
+    cudaFree(dev_lights);
     // TODO: clean up any extra device memory you created
 
     checkCUDAError("pathtraceFree");
@@ -176,6 +181,8 @@ __global__ void computeIntersections(
     PathSegment* pathSegments,
     Geom* geoms,
     int geoms_size,
+    Light* lights,
+    int lights_size,
     ShadeableIntersection* intersections)
 {
     int path_index = blockIdx.x * blockDim.x + threadIdx.x;
@@ -189,6 +196,7 @@ __global__ void computeIntersections(
         glm::vec3 normal;
         float t_min = FLT_MAX;
         int hit_geom_index = -1;
+        int hit_light_index = -1;
         bool outside = true;
 
         glm::vec3 tmp_intersect;
@@ -221,17 +229,54 @@ __global__ void computeIntersections(
             }
         }
 
-        if (hit_geom_index == -1) // no geometry was hit
+        // parse through lights
+        for (int i = 0; i < lights_size; i++)
+        {
+            Light& light = lights[i];
+            if (light.type == AREALIGHT)
+            {
+                // use a cube as a dummy
+                Geom placeholdersquare = {GeomType.CUBE, 0, light.translation, light.rotation, glm::vec3(light.areaLight.x * light.scale.x, light.areaLight.y * light.scale.y, EPSILON * 10.f), light.transform, light.inverseTransform, light.invTranspose};
+
+                t = boxIntersectionTest(placeholdersquare, pathSegment.ray, tmp_intersect, tmp_normal, outside);
+
+            } else if (light.type == POINTLIGHT)
+            {
+                // usually miss; however use a sphere as a dummy
+                Geom placeholdersphere = {GeomType.SPHERE, 0, light.translation, light.rotation, glm::vec3(1.f) * EPSILON, light.transform, light.inverseTransform, light.invTranspose};
+
+                t = sphereIntersectionTest(placeholdersphere, pathSegment.ray, tmp_intersect, tmp_normal, outside);
+            }
+
+            if (t > 0.0f && t_min > t)
+            {
+                t_min = t;
+                hit_light_index = i;
+                intersect_point = tmp_intersect;
+                normal = tmp_normal;
+            }
+        }
+
+        if (hit_geom_index == -1 && hit_light_index == -1) // no geometry was hit
         {
             intersections[path_index].t = -1.0f;
         }
-        else
+        else if (hit_light_index != -1) // if we hit a light, then this should be updated, and be the first object the ray hits (updated t_min)
         {
-            // The ray hits something
+            intersections[path_index].t = t_min;
+            intersections[path_index].isLight = 1;
+            intersections[path_index].lightId = hit_light_index;
+            intersections[path_index].surfaceNormal = normal;
+            intersections[path_index].materialId = -1; // no material id
+        } 
+        else if (hit_geom_index != -1 ) 
+        {
             intersections[path_index].t = t_min;
             intersections[path_index].materialId = geoms[hit_geom_index].materialid;
             intersections[path_index].surfaceNormal = normal;
-        } // update intersections if we hit something
+            intersections[path_index].isLight = 0;
+
+        }
     }
 }
 
@@ -241,7 +286,8 @@ __global__ void shadeMaterial(
     int num_paths,
     ShadeableIntersection* shadeableIntersections,
     PathSegment* pathSegments,
-    Material* materials)
+    Material* materials,
+    Light* lights)
 {
     int idx = blockIdx.x * blockDim.x + threadIdx.x;
     if (idx >= num_paths) return;
@@ -257,7 +303,15 @@ __global__ void shadeMaterial(
     }
 
     Material material = materials[intersection.materialId];
+    Light light = lights[intersection.lightId];
 
+    // If we actually hit a light, light the ray
+    if (intersection.isLight) {
+        // TODO: handle light contributions depending on area or point light
+        pathSegment.color *= light.color * light.intensity;
+        pathSegment.remainingBounces = 0;
+        return;
+    }
   
     // If the material indicates that the object was a light, "light" the ray
     if (material.emittance > 0.0f) {
@@ -265,6 +319,7 @@ __global__ void shadeMaterial(
         pathSegment.remainingBounces = 0;
         return;
     }
+    
     if (pathSegment.remainingBounces <= 0) { // no contributionn if no more bounces
         pathSegment.color = glm::vec3(0.f);
         return;
@@ -285,6 +340,14 @@ __global__ void shadeMaterial(
 
     // after this, then our pathSegment should be completely updated here for the ray
 
+    // direct lightin
+    // sampleDirectLighting(pathSegment,
+    //     intersectPoint,
+    //     intersection.surfaceNormal,
+    //     material,
+    //     lights,
+    //     rng);
+   
     pathSegment.remainingBounces--;
 
 
@@ -363,6 +426,8 @@ void pathtrace(uchar4* pbo, int frame, int iter)
             dev_paths,
             dev_geoms,
             hst_scene->geoms.size(),
+            dev_lights,
+            hst_scene->lights.size(),
             dev_intersections
         );
         // dev_intersections should now be populated
@@ -371,11 +436,11 @@ void pathtrace(uchar4* pbo, int frame, int iter)
         depth++;
 
         // zip up with dev_paths, so the indices match
-        //auto dev_zipped = thrust::make_zip_iterator(thrust::make_tuple(dev_intersections, dev_paths));
-        //auto dev_zipped_end = thrust::make_zip_iterator(thrust::make_tuple(dev_intersections + num_paths, dev_paths + num_paths));
+        auto dev_zipped = thrust::make_zip_iterator(thrust::make_tuple(dev_intersections, dev_paths));
+        auto dev_zipped_end = thrust::make_zip_iterator(thrust::make_tuple(dev_intersections + num_paths, dev_paths + num_paths));
 
-        //// making contiguous in memory, sort by materialID
-        //thrust::sort(thrust::device, dev_zipped, dev_zipped_end, sort_by_material());
+        // making contiguous in memory, sort by materialID
+        thrust::sort(thrust::device, dev_zipped, dev_zipped_end, sort_by_material());
 
         // apply bsdf and populate color of paths
         shadeMaterial<<<numblocksPathSegmentTracing, blockSize1d>>>(
@@ -384,8 +449,11 @@ void pathtrace(uchar4* pbo, int frame, int iter)
             num_paths,
             dev_intersections,
             dev_paths,
-            dev_materials
+            dev_materials,
+            dev_lights
         );
+
+
         checkCUDAError("Shading material");
    
 

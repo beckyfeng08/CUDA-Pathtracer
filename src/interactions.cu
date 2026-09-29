@@ -188,8 +188,10 @@ __host__ __device__ void sampleDirectLighting(
     PathSegment& pathSegment,
     glm::vec3 intersect,
     glm::vec3 normal,
-    Material* materials,
-    thrust::default_random_engine& rng)
+    const Material &m,
+    const Lights &l,
+    thrust::default_random_engine& rng
+)
 {
     // get all the emitting materials
     // randomly select form the emitting material
