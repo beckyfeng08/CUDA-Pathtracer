@@ -19,7 +19,7 @@ enum LightType
 {
     AREALIGHT,
     POINTLIGHT
-}
+};
 
 struct Ray
 {
@@ -57,8 +57,8 @@ struct Light
         float x;
         float y;
     } areaLight;
-    
-    struct  {
+
+    struct {
         float decay;
         float range;
     } pointLight;
@@ -73,7 +73,7 @@ struct Light
     glm::mat4 transform;
     glm::mat4 inverseTransform;
     glm::mat4 invTranspose;
-}
+};
 
 struct Camera
 {

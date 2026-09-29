@@ -189,7 +189,7 @@ __host__ __device__ void sampleDirectLighting(
     glm::vec3 intersect,
     glm::vec3 normal,
     const Material &m,
-    const Lights &l,
+    const Light &l,
     thrust::default_random_engine& rng
 )
 {

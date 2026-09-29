@@ -237,7 +237,7 @@ __global__ void computeIntersections(
             {
                 // use a cube as a dummy
                 Geom placeholdersquare = {
-                    GeomType.CUBE, 
+                    CUBE, 
                     0, 
                     light.translation,
                     light.rotation, 
@@ -249,13 +249,12 @@ __global__ void computeIntersections(
 
                 t = boxIntersectionTest(placeholdersquare, pathSegment.ray, tmp_intersect, tmp_normal, outside);
 
-            } else if (light.type == POINTLIGHT)
-            {
-                // usually miss; however use a sphere as a dummy
-                Geom placeholdersphere = {GeomType.SPHERE, 0, light.translation, light.rotation, glm::vec3(1.f) * EPSILON, light.transform, light.inverseTransform, light.invTranspose};
-
-                t = sphereIntersectionTest(placeholdersphere, pathSegment.ray, tmp_intersect, tmp_normal, outside);
-            }
+            } 
+            //else if (light.type == POINTLIGHT)
+            //{
+            //    // if light is point light, itll miss. Be sure to use direct lighting for this to render
+            //    
+            //}
 
             if (t > 0.0f && t_min > t)
             {

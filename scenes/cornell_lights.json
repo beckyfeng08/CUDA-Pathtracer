@@ -28,7 +28,7 @@
         "RES":[800,800],
         "FOVY":45.0,
         "ITERATIONS":5000,
-        "DEPTH":50,
+        "DEPTH":8,
         "FILE":"cornell",
         "EYE":[0.0,5.0,10.5],
         "LOOKAT":[0.0,5.0,0.0],
@@ -36,13 +36,6 @@
     },
     "Objects":
     [
-        // {
-        //     "TYPE":"cube",
-        //     "MATERIAL":"light",
-        //     "TRANS":[0.0,10.0,0.0],
-        //     "ROTAT":[0.0,0.0,0.0],
-        //     "SCALE":[3.0,0.3,3.0]
-        // },
         {
             "TYPE":"cube",
             "MATERIAL":"diffuse_white",
@@ -91,10 +84,10 @@
     [
         {
         "TYPE":"AREA",
-        "RGB":[1.0, 0.0, 0.0],
+        "RGB":[0.98, 0.98, 0.98],
         "x": 1.0,
         "y": 1.0,
-        "INTENSITY": 1.0,
+        "INTENSITY": 10.0,
         "TRANS":[0.0,10.0,0.0],
         "ROTAT":[0.0,0.0,0.0],
         "SCALE":[3.0, 0.3, 3.0]
@@ -102,7 +95,7 @@
         {
         "TYPE":"POINT",
         "RGB":[0.0, 0.0, 1.0],
-        "INTENSITY": 10.0,
+        "INTENSITY": 1.0,
         "DECAY": 2.0,
         "RANGE": 10.0,
         "TRANS":[-1.0,8.0,-1.0],
