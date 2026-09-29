@@ -320,8 +320,6 @@ __global__ void shadeMaterial(
             // divide by the width and height
             contribution /= (light.scale.x * light.scale.z); // the width and length components
             // also dot along normal
-
-            contribution *= glm::max(0.f, glm::dot(light.normal, -pathSegment.ray.direction));
         }
         
         pathSegment.color *= contribution;

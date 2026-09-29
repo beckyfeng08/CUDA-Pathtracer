@@ -94,7 +94,7 @@ void Scene::loadFromJSON(const std::string& jsonName)
         newLight.translation, newLight.rotation, newLight.scale);
         newLight.inverseTransform = glm::inverse(newLight.transform);
         newLight.invTranspose = glm::inverseTranspose(newLight.transform);
-        newLight.normal = glm::normalize(glm::vec3(newLight.transform[2]));
+        newLight.normal = -glm::normalize(glm::vec3(newLight.transform[1])); // point down
         lights.push_back(newLight);
 
 
