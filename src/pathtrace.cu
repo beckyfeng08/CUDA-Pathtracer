@@ -312,12 +312,21 @@ __global__ void shadeMaterial(
 
     Material material = materials[intersection.materialId];
     Light light = lights[intersection.lightId];
-
     // If we actually hit a light, light the ray
     if (intersection.isLight) {
-        // TODO: handle light contributions depending on area or point light
-        pathSegment.color *= light.color * light.intensity;
+        glm::vec3 contribution = light.color * light.intensity;
+
+        if (light.type == AREALIGHT) {
+            // divide by the width and height
+            contribution /= (light.scale.x * light.scale.z); // the width and length components
+            // also dot along normal
+
+            contribution *= glm::max(0.f, glm::dot(light.normal, -pathSegment.ray.direction));
+        }
+        
+        pathSegment.color *= contribution;
         pathSegment.remainingBounces = 0;
+        
         return;
     }
   

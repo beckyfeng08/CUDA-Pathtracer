@@ -70,6 +70,7 @@ struct Light
     glm::mat4 transform;
     glm::mat4 inverseTransform;
     glm::mat4 invTranspose;
+    glm::vec3 normal;
 };
 
 struct Camera
