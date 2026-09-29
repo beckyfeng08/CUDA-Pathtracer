@@ -73,8 +73,6 @@ void Scene::loadFromJSON(const std::string& jsonName)
         if (p["TYPE"] == "AREA")
         {
             newLight.type = AREALIGHT;
-            newLight.areaLight.x = p["x"];
-            newLight.areaLight.y = p["y"];
         }
         else if (p["TYPE"] == "POINT")
         {

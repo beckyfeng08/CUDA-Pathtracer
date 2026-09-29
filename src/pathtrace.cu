@@ -241,7 +241,7 @@ __global__ void computeIntersections(
                     0, 
                     light.translation,
                     light.rotation, 
-                    glm::vec3(light.areaLight.x * light.scale.x, EPSILON * 10.f, light.areaLight.y * light.scale.y),
+                    light.scale,
                     light.transform, 
                     light.inverseTransform, 
                     light.invTranspose

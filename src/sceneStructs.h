@@ -53,10 +53,7 @@ struct Material
 struct Light
 {
     glm::vec3 color;
-    struct {
-        float x;
-        float y;
-    } areaLight;
+
 
     struct {
         float decay;
