@@ -199,71 +199,26 @@ __global__ void computeIntersections(
         int hit_light_index = -1;
         bool outside = true;
 
-        glm::vec3 tmp_intersect;
-        glm::vec3 tmp_normal;
+        // naive parse through sgeoms
+        t_min = geometryIntersectionTest(
+            geoms, 
+            geoms_size, 
+            pathSegment.ray, 
+            intersect_point,
+            normal,
+            outside,
+            hit_geom_index
+        );
 
-        // naive parse through global geoms
+        t_min = lightIntersectionTest(
+            lights,
+            lights_size,
+            pathSegment.ray, 
+            intersect_point,
+            normal,
+            hit_light_index
+        );
 
-        for (int i = 0; i < geoms_size; i++)
-        {
-            Geom& geom = geoms[i];
-
-            if (geom.type == CUBE)
-            {
-                t = boxIntersectionTest(geom, pathSegment.ray, tmp_intersect, tmp_normal, outside);
-            }
-            else if (geom.type == SPHERE)
-            {
-                t = sphereIntersectionTest(geom, pathSegment.ray, tmp_intersect, tmp_normal, outside);
-            }
-            // TODO: add more intersection tests here... triangle? metaball? CSG?
-
-            // Compute the minimum t from the intersection tests to determine what
-            // scene geometry object was hit first.
-            if (t > 0.0f && t_min > t)
-            {
-                t_min = t;
-                hit_geom_index = i;
-                intersect_point = tmp_intersect;
-                normal = tmp_normal;
-            }
-        }
-
-        // parse through lights
-        for (int i = 0; i < lights_size; i++)
-        {
-            Light& light = lights[i];
-            if (light.type == AREALIGHT)
-            {
-                // use a cube as a dummy
-                Geom placeholdersquare = {
-                    CUBE, 
-                    0, 
-                    light.translation,
-                    light.rotation, 
-                    light.scale,
-                    light.transform, 
-                    light.inverseTransform, 
-                    light.invTranspose
-                };
-
-                t = boxIntersectionTest(placeholdersquare, pathSegment.ray, tmp_intersect, tmp_normal, outside);
-
-            } 
-            //else if (light.type == POINTLIGHT)
-            //{
-            //    // if light is point light, itll miss. Be sure to use direct lighting for this to render
-            //    
-            //}
-
-            if (t > 0.0f && t_min > t)
-            {
-                t_min = t;
-                hit_light_index = i;
-                intersect_point = tmp_intersect;
-                normal = tmp_normal;
-            }
-        }
 
         if (hit_geom_index == -1 && hit_light_index == -1) // no geometry was hit
         {
@@ -283,7 +238,6 @@ __global__ void computeIntersections(
             intersections[path_index].materialId = geoms[hit_geom_index].materialid;
             intersections[path_index].surfaceNormal = normal;
             intersections[path_index].isLight = 0;
-
         }
     }
 }
@@ -295,7 +249,8 @@ __global__ void shadeMaterial(
     ShadeableIntersection* shadeableIntersections,
     PathSegment* pathSegments,
     Material* materials,
-    Light* lights)
+    Light* lights,
+    int lights_size)
 {
     int idx = blockIdx.x * blockDim.x + threadIdx.x;
     if (idx >= num_paths) return;
@@ -357,14 +312,7 @@ __global__ void shadeMaterial(
 
     // after this, then our pathSegment should be completely updated here for the ray
 
-    // direct lightin
-    // sampleDirectLighting(pathSegment,
-    //     intersectPoint,
-    //     intersection.surfaceNormal,
-    //     material,
-    //     lights,
-    //     rng);
-   
+
     pathSegment.remainingBounces--;
 
 
@@ -467,7 +415,9 @@ void pathtrace(uchar4* pbo, int frame, int iter)
             dev_intersections,
             dev_paths,
             dev_materials,
-            dev_lights
+            dev_lights,
+            hst_scene->lights.size(),
+
         );
 
 

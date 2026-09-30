@@ -111,3 +111,91 @@ __host__ __device__ float sphereIntersectionTest(
 
     return glm::length(r.origin - intersectionPoint);
 }
+
+// sub-process of computeIntersections in pathtrace.cu
+ __host__ __device__ float geometryIntersectionTest(
+    Geom* geoms,
+    int geoms_size,
+    Ray r,
+    glm::vec3& intersectionPoint,
+    glm::vec3& normal,
+    bool& outside,
+    int& hit_geom_index
+)
+{
+    float t;
+    float t_min = FLT_MAX;
+    glm::vec3 tmp_intersect;
+    glm::vec3 tmp_normal;
+
+    for (int i = 0; i < geoms_size; i++)
+    {
+        Geom& geom = geoms[i];
+
+        if (geom.type == CUBE)
+        {
+            t = boxIntersectionTest(geom, r, tmp_intersect, tmp_normal, outside);
+        }
+        else if (geom.type == SPHERE)
+        {
+            t = sphereIntersectionTest(geom, r, tmp_intersect, tmp_normal, outside);
+        }
+        // TODO: add more intersection tests here... triangle? metaball? CSG?
+
+        // Compute the minimum t from the intersection tests to determine what
+        // scene geometry object was hit first.
+        if (t > 0.0f && t_min > t)
+        {
+            t_min = t;
+            hit_geom_index = i;
+            intersectionPoint = tmp_intersect;
+            normal = tmp_normal;
+        }
+    }
+    return t_min;
+}
+
+__host__ __device__ float lightIntersectionTest(
+    Light* lights,
+    int lights_size,
+    Ray r,
+    glm::vec3& intersectionPoint,
+    glm::vec3& normal,
+    int& hit_light_index
+)
+{
+    float t;
+    float t_min = FLT_MAX;
+    glm::vec3 tmp_intersect;
+    glm::vec3 tmp_normal;
+    bool outside = false; // as a placeholder, this is just thrown away
+    for (int i = 0; i < lights_size; i++)
+        {
+            Light& light = lights[i];
+            if (light.type == AREALIGHT)
+            {
+                // use a cube as a dummy to represent the light for intersection
+                Geom placeholdersquare = {
+                    CUBE, 
+                    0, 
+                    light.translation,
+                    light.rotation, 
+                    light.scale,
+                    light.transform, 
+                    light.inverseTransform, 
+                    light.invTranspose
+                };
+
+                t = boxIntersectionTest(placeholdersquare, r, tmp_intersect, tmp_normal, outside);
+            }
+
+            if (t > 0.0f && t_min > t)
+            {
+                t_min = t;
+                hit_light_index = i;
+                intersectionPoint = tmp_intersect;
+                normal = tmp_normal;
+            }
+        }
+    return t_min;
+}

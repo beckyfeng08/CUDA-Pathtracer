@@ -71,3 +71,39 @@ __host__ __device__ float sphereIntersectionTest(
     glm::vec3& intersectionPoint,
     glm::vec3& normal,
     bool& outside);
+
+/**
+ * Handles all geometry intersection, calls intersection tests for sphere and box and triangles or whatever
+ *
+* @param intersectionPoint  Output parameter for point of intersection.
+ * @param normal             Output parameter for surface normal.
+ * @param outside            Output param for whether the ray came from outside.
+ * @param hit_geom_index    Output param for the exact geometry index that we hit
+ * @return                   Ray parameter `t` value. FLT_MAX if no intersection, in which case hit_geom_index is unmodified (-1).
+*/
+ __host__ __device__ float geometryIntersectionTest(
+    Geom* geoms,
+    int geoms_size,
+    Ray r,
+    glm::vec3& intersectionPoint,
+    glm::vec3& normal,
+    bool& outside,
+    int& hit_geom_index
+);
+
+/**
+ * Handles all light intersection, which is just area light at this point in time
+ *
+* @param intersectionPoint  Output parameter for point of intersection.
+ * @param normal             Output parameter for surface normal.
+ * @param hit_light_index    Output param for the exact light index that we hit
+ * @return                   Ray parameter `t` value.  FLT_MAX if no intersection, in which case hit_light_index is unmodified (-1).
+*/
+__host__ __device__ float lightIntersectionTest(
+    Light* lights,
+    int lights_size,
+    Ray r,
+    glm::vec3& intersectionPoint,
+    glm::vec3& normal,
+    int& hit_light_index
+);

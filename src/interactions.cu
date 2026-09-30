@@ -87,41 +87,8 @@ __host__ __device__ glm::vec3 samplePerfectSpecularTransmission(
 }
 
 // fresnel reflection from dielectrics and unpolarized light
-__host__ __device__ float computeFresnelReflectance(float costhetaI, float n_i, float n_t)
+__host__ __device__ float computeFresnelReflectance(float cosThetaI, float etaI, float etaT)
 {
-    // swap indices of refraction if needed
-    bool entering = costhetaI > 0.f;
-    if (!entering) {
-        float temp = n_i;
-        n_i = n_t;
-        n_t = temp;
-        costhetaI = glm::abs(costhetaI);
-    }
-    // compute costhetaT with snells law
-    float sinThetaI = glm::sqrt(glm::max(0., 1. - costhetaI * costhetaI));
-    float sinThetaT = n_i / n_t * sinThetaI;
-    if (sinThetaT >= 1) return 1; // total internal reflection
-
-    float cosThetaT = glm::sqrt(1 - sinThetaT * sinThetaT);
-
-    float r_par = ((n_t * costhetaI) - (n_i * cosThetaT)) / ((n_t * costhetaI) + (n_i * cosThetaT));
-    float r_perp =  ((n_i * costhetaI) - (n_t * cosThetaT)) / ((n_i * costhetaI) + (n_t * cosThetaT));
-    return (r_par * r_par + r_perp * r_perp) * 0.5;
-}
-
-__host__ __device__ glm::vec3 sampleDielectric(
-    PathSegment & pathSegment,
-    glm::vec3 intersect,
-    glm::vec3 normal,
-    const Material &m,
-    thrust::default_random_engine &rng)
-{
-    glm::vec3 resulting_color = m.color;
-    
-    float cosThetaI = glm::dot(normal, -pathSegment.ray.direction);
-
-    float etaI = 1.0f;
-    float etaT = m.indexOfRefraction;
 
     if (cosThetaI < 0.0f)
     {
@@ -132,19 +99,14 @@ __host__ __device__ glm::vec3 sampleDielectric(
     }
 
     float eta = etaI / etaT;
-
     cosThetaI = glm::clamp(cosThetaI, 0.0f, 1.0f);
-
+    
     float sin2ThetaI = 1.0f - cosThetaI * cosThetaI;
     float sin2ThetaT = sin2ThetaI * eta * eta;
 
     float F;
 
-    if (sin2ThetaT >= 1.0f)
-    {
-        // Total internal reflection
-        F = 1.0f;
-    }
+    if (sin2ThetaT >= 1.0f) F = 1.0f; // total internal reflection
     else
     {
         float cosThetaT = glm::sqrt(1.0f - sin2ThetaT);
@@ -159,18 +121,33 @@ __host__ __device__ glm::vec3 sampleDielectric(
 
         F = 0.5f * (rPerp * rPerp + rPar * rPar);
     }
+    return F;
+}
+
+__host__ __device__ glm::vec3 sampleDielectric(
+    PathSegment & pathSegment,
+    glm::vec3 intersect,
+    glm::vec3 normal,
+    const Material &m,
+    thrust::default_random_engine &rng)
+{
+    glm::vec3 resulting_color = m.color;
+    
+    float cosThetaI = glm::dot(normal, -pathSegment.ray.direction);
+    float etaI = 1.0f;
+    float etaT = m.indexOfRefraction;
+    float F = computeFresnelReflectance(cosThetaI, etaI, etaT);
 
     thrust::uniform_real_distribution<float> u01(0, 1);
     float probability = u01(rng);
 
-    // choose with biased probability
+    // russion roulette choose
     if (probability < F) {
         resulting_color = samplePerfectSpecularReflection(
             pathSegment,
             intersect,
             normal,
             m);
-        //resulting_color /= F;
     } else {
         resulting_color = samplePerfectSpecularTransmission(
             eta,
@@ -178,25 +155,69 @@ __host__ __device__ glm::vec3 sampleDielectric(
             intersect,
             normal,
             m);
-        //resulting_color /= 1. - F;
     }
 
     return resulting_color;
 }
 
-__host__ __device__ void sampleDirectLighting(
+__host__ __device__ glm::vec3 sampleDirectLighting(
     PathSegment& pathSegment,
     glm::vec3 intersect,
     glm::vec3 normal,
     const Material &m,
-    const Light &l,
+    Lights* l,
+    int lights_size,
     thrust::default_random_engine& rng
 )
 {
-    // get all the emitting materials
-    // randomly select form the emitting material
-    // sample whatever shape it is??
-    return;
+    glm::vec3 resulting_color = glm::vec3(1.f);
+
+    thrust::uniform_real_distribution<float> u01(0, 1);
+    int light_index = floor(u01(rng) * lights_size);
+    Light light = l[light_index];
+
+    if (light.type == AREALIGHT) 
+    {
+        glm::vec3 xy = glm::vec3(glm::mix(-0.5, 0.5, u01(rng)), glm::mix(-0.5, 0.5, u01(rng)), 0.0); // randomly sample a point in the arealight
+
+        glm::vec3 rand_pt_light_w = glm::vec3(light.transform.T * glm::vec4(xy, 1.)); // take random point in local light, transform to world coordinate
+
+        glm::vec3 view_point = pathSegment.origin;
+        glm::vec3 wiW = glm::normalize(rand_pt_light_w - view_point);
+
+        float cosTheta = glm::dot(light.normal, -wiW);
+        if (cosTheta <= 0.) { // we are behind the light
+            resulting_color = glm::vec3(0.);
+        } 
+        else // we are on the side of the light that it is facing
+        {
+            float area = light.scale.x * light.scale.z; // area of arealight
+            float r = glm::length(wiW);
+
+            float pdf_dA = 1.f / area;
+            pdf = pdf_dA * r*r / cosTheta; // account for falloff, and angle
+
+            // how to do?? need to call computeIntersections?? but we are on the gpu already
+            // put geometry intersections on the device, then call
+            
+            PathSegment p = pathSegment;
+
+            Ray ray = SpawnRay(view_point, wiW);
+            Intersection isect = sceneIntersect(ray); // problem here??? how to make since our intersection test is gpu acc
+
+            if (isect.t == -1 && isect.t < r - 1e-3) { // hit an occluder
+                resulting_color = glm::vec3(0.);
+            } else {
+                resulting_color = light.color * light.intensity / pdf;
+            }
+        }
+    }
+    else if (light.type == POINTLIGHT) 
+    {
+
+    }
+
+    return resulting_color;
 }
 
 
@@ -205,10 +226,12 @@ __host__ __device__ void scatterRay(
     glm::vec3 intersect,
     glm::vec3 normal,
     const Material &m,
+    Lights* l,
+    int lights_size,
     thrust::default_random_engine &rng)
 {
 
-    glm::vec3 resulting_color = m.color;
+    glm::vec3 resulting_color;
 
     if (m.isDielectric > 0.) { // glass, water, plastic
         resulting_color = sampleDielectric(
@@ -217,8 +240,6 @@ __host__ __device__ void scatterRay(
             normal,
             m,
             rng);
-
-        pathSegment.color *= resulting_color;
     }
     // DIFFUSE
     else {
@@ -228,6 +249,17 @@ __host__ __device__ void scatterRay(
             normal,
             m,
             rng); 
-        pathSegment.color *= resulting_color;
     }
+
+    resulting_color *= sampleDirectLighting(
+        pathSegment,
+        intersect,
+        normal,
+        m, 
+        l,
+        lights_size,
+        rng
+        );
+    pathSegment.color *= resulting_color;
+
 }
