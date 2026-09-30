@@ -314,5 +314,7 @@ __host__ __device__ void scatterRay(
         rng
         );
     pathSegment.color *= resulting_color;
+    if (pathSegment.color == glm::vec3(0.f))
+        pathSegment.remainingBounces = 0; // just terminate early at this point brah
 
 }
