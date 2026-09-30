@@ -249,6 +249,8 @@ __global__ void shadeMaterial(
     ShadeableIntersection* shadeableIntersections,
     PathSegment* pathSegments,
     Material* materials,
+    Geom* geoms,
+    int geoms_size,
     Light* lights,
     int lights_size)
 {
@@ -306,7 +308,10 @@ __global__ void shadeMaterial(
         pathSegment,
         intersectPoint,
         intersection.surfaceNormal,
-        material,
+        geoms,
+        geoms_size,
+        lights,
+        lights_size,
         rng
     );
 
@@ -415,6 +420,8 @@ void pathtrace(uchar4* pbo, int frame, int iter)
             dev_intersections,
             dev_paths,
             dev_materials,
+            dev_geoms,
+            hst_scene->geoms.size(),
             dev_lights,
             hst_scene->lights.size(),
 

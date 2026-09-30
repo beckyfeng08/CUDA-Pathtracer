@@ -166,8 +166,9 @@ __host__ __device__ glm::vec3 sampleDirectLighting(
     PathSegment& pathSegment,
     glm::vec3 intersect,
     glm::vec3 normal,
-    const Material &m,
-    Lights* l,
+    Geom* geom,
+    int geoms_size,
+    Light* l,
     int lights_size,
     thrust::default_random_engine& rng
 )
@@ -188,28 +189,34 @@ __host__ __device__ glm::vec3 sampleDirectLighting(
         glm::vec3 wiW = glm::normalize(rand_pt_light_w - view_point);
 
         float cosTheta = glm::dot(light.normal, -wiW);
-
-         // we are behind the light
-        if (cosTheta <= 0.) {
-            resulting_color = glm::vec3(0.);
-        } 
+        
+        // we are behind the light or our surface is facing away from the light
+        if (cosTheta <= 0. || glm::dot(normal, -wiW) <= 0.) {
+            resulting_color = glm::vec3(0.f);
+        }
         else
         {
             // check for occluders
             Ray ray = {view_point, wiW};
+            int hit_geom_index = -1;
 
+            // throwaway vars
+            glm::vec3 normal;
+            glm::vec3 intersectionPoint;
+            bool outside = false;
             float t = geometryIntersectionTest(
-                Geom* geoms,
-                int geoms_size,
+                geoms,
+                geoms_size,
                 ray,
-                glm::vec3& intersectionPoint,
-                glm::vec3& normal,
-                bool& outside,
-                int& hit_geom_index
+                intersectionPoint,
+                normal,
+                outside,
+                hit_geom_index
             ); 
 
             // we hit an occluder before reaching the light
-            if (hit_geom_index != -1 && t < r - EPSILON) {
+            if (hit_geom_index != -1 && t < r - EPSILON)
+            {
                 resulting_color = glm::vec3(0.);
             } 
             else 
@@ -226,7 +233,38 @@ __host__ __device__ glm::vec3 sampleDirectLighting(
     }
     else if (light.type == POINTLIGHT) 
     {
+        glm::vec3 view_point = pathSegment.origin;
 
+        glm::vec3 wiW = glm::normalize(light.translation - view_point);
+        //  our surface is facing away from the light
+        if (glm::dot(normal, -wiW) <= 0.) {
+            resulting_color = glm::vec3(0.);
+        }
+        else
+        {
+            Ray ray = {view_point, wiW};
+            // throwaway vars
+            int hit_geom_index = -1;
+            glm::vec3 normal;
+            glm::vec3 intersectionPoint;
+            bool outside = false;
+            float t = geometryIntersectionTest(
+                    geoms,
+                    geoms_size,
+                    ray,
+                    intersectionPoint,
+                    normal,
+                    outside,
+                    hit_geom_index
+                );
+
+            float r = glm::length(light.translation - view_point);
+
+            if (hit_geom_index != -1 && t < r - EPSILON) // hit an occluder
+                return glm::vec3(0.);
+            else
+                return light.color * light.intensity / (r * r);
+        }
     }
 
     return resulting_color;
@@ -238,7 +276,9 @@ __host__ __device__ void scatterRay(
     glm::vec3 intersect,
     glm::vec3 normal,
     const Material &m,
-    Lights* l,
+    Geom* geoms,
+    int geom_size,
+    Light* l,
     int lights_size,
     thrust::default_random_engine &rng)
 {
@@ -267,7 +307,8 @@ __host__ __device__ void scatterRay(
         pathSegment,
         intersect,
         normal,
-        m, 
+        geoms,
+        geoms_size,
         l,
         lights_size,
         rng
