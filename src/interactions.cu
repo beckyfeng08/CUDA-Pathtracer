@@ -1,4 +1,5 @@
 #include "interactions.h"
+#include "intersections.h"
 
 #include "utilities.h"
 #include <glm/gtc/constants.hpp>
@@ -160,6 +161,7 @@ __host__ __device__ glm::vec3 sampleDielectric(
     return resulting_color;
 }
 
+// TODO: place here or in pathtrace??
 __host__ __device__ glm::vec3 sampleDirectLighting(
     PathSegment& pathSegment,
     glm::vec3 intersect,
@@ -186,28 +188,38 @@ __host__ __device__ glm::vec3 sampleDirectLighting(
         glm::vec3 wiW = glm::normalize(rand_pt_light_w - view_point);
 
         float cosTheta = glm::dot(light.normal, -wiW);
-        if (cosTheta <= 0.) { // we are behind the light
+
+         // we are behind the light
+        if (cosTheta <= 0.) {
             resulting_color = glm::vec3(0.);
         } 
-        else // we are on the side of the light that it is facing
+        else
         {
-            float area = light.scale.x * light.scale.z; // area of arealight
-            float r = glm::length(wiW);
+            // check for occluders
+            Ray ray = {view_point, wiW};
 
-            float pdf_dA = 1.f / area;
-            pdf = pdf_dA * r*r / cosTheta; // account for falloff, and angle
+            float t = geometryIntersectionTest(
+                Geom* geoms,
+                int geoms_size,
+                ray,
+                glm::vec3& intersectionPoint,
+                glm::vec3& normal,
+                bool& outside,
+                int& hit_geom_index
+            ); 
 
-            // how to do?? need to call computeIntersections?? but we are on the gpu already
-            // put geometry intersections on the device, then call
-            
-            PathSegment p = pathSegment;
-
-            Ray ray = SpawnRay(view_point, wiW);
-            Intersection isect = sceneIntersect(ray); // problem here??? how to make since our intersection test is gpu acc
-
-            if (isect.t == -1 && isect.t < r - 1e-3) { // hit an occluder
+            // we hit an occluder before reaching the light
+            if (hit_geom_index != -1 && t < r - EPSILON) {
                 resulting_color = glm::vec3(0.);
-            } else {
+            } 
+            else 
+            {
+                float area = light.scale.x * light.scale.z; // area of arealight
+                float r = glm::length(wiW);
+
+                float pdf_dA = 1.f / area;
+                pdf = pdf_dA * r*r / cosTheta; // account for falloff, and angle
+
                 resulting_color = light.color * light.intensity / pdf;
             }
         }
