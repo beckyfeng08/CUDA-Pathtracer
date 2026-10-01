@@ -222,7 +222,6 @@ __global__ void computeIntersections(
             t_min = t;
 
 
-
         if (hit_geom_index == -1 && hit_light_index == -1) // no geometry was hit
         {
             intersections[path_index].t = -1.0f;
