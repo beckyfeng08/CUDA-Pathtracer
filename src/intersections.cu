@@ -127,13 +127,13 @@ __host__ __device__ float sphereIntersectionTest(
     float t_min = FLT_MAX;
     glm::vec3 tmp_intersect;
     glm::vec3 tmp_normal;
-
     for (int i = 0; i < geoms_size; i++)
     {
         Geom& geom = geoms[i];
 
         if (geom.type == CUBE)
         {
+            //printf("is a cube");
             t = boxIntersectionTest(geom, r, tmp_intersect, tmp_normal, outside);
         }
         else if (geom.type == SPHERE)
@@ -150,6 +150,8 @@ __host__ __device__ float sphereIntersectionTest(
             hit_geom_index = i;
             intersectionPoint = tmp_intersect;
             normal = tmp_normal;
+            //printf("hit_geom_index, %d \n", hit_geom_index);
+
         }
     }
     return t_min;

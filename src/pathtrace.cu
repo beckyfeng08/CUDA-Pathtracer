@@ -210,7 +210,7 @@ __global__ void computeIntersections(
             hit_geom_index
         );
 
-        t_min = lightIntersectionTest(
+        t = lightIntersectionTest(
             lights,
             lights_size,
             pathSegment.ray, 
@@ -218,6 +218,9 @@ __global__ void computeIntersections(
             normal,
             hit_light_index
         );
+        if (t < t_min)
+            t_min = t;
+
 
 
         if (hit_geom_index == -1 && hit_light_index == -1) // no geometry was hit
@@ -266,7 +269,6 @@ __global__ void shadeMaterial(
         pathSegment.remainingBounces = 0;
         return;
     }
-
     Material material = materials[intersection.materialId];
     Light light = lights[intersection.lightId];
     // If we actually hit a light, light the ray
@@ -284,14 +286,15 @@ __global__ void shadeMaterial(
         
         return;
     }
-  
+
+
     // If the material indicates that the object was a light, "light" the ray
     if (material.emittance > 0.0f) {
         pathSegment.color *= (material.color * material.emittance);
         pathSegment.remainingBounces = 0;
         return;
     }
-    
+
     if (pathSegment.remainingBounces <= 0) { // no contributionn if no more bounces
         pathSegment.color = glm::vec3(0.f);
         return;
@@ -306,6 +309,7 @@ __global__ void shadeMaterial(
         pathSegment,
         intersectPoint,
         intersection.surfaceNormal,
+        material,
         geoms,
         geoms_size,
         lights,
@@ -421,8 +425,7 @@ void pathtrace(uchar4* pbo, int frame, int iter)
             dev_geoms,
             hst_scene->geoms.size(),
             dev_lights,
-            hst_scene->lights.size(),
-
+            hst_scene->lights.size()
         );
 
 
