@@ -45,6 +45,7 @@ __host__ __device__ glm::vec3 calculateRandomDirectionInHemisphere(
         + cos(around) * over * perpendicularDirection1
         + sin(around) * over * perpendicularDirection2;
 }
+
 __host__ __device__ glm::vec3 sampleDiffuse(
     PathSegment & pathSegment,
     glm::vec3 intersect,
@@ -88,19 +89,8 @@ __host__ __device__ glm::vec3 samplePerfectSpecularTransmission(
 }
 
 // fresnel reflection from dielectrics and unpolarized light
-__host__ __device__ float computeFresnelReflectance(const Material& m, float cosThetaI, float etaI, float etaT)
+__host__ __device__ float computeFresnelReflectance(const Material& m, float cosThetaI, float eta)
 {
-
-    if (cosThetaI < 0.0f)
-    {
-        // exiting the material
-        cosThetaI = -cosThetaI;
-        etaI = m.indexOfRefraction;
-        etaT = 1.0f;
-    }
-
-    float eta = etaI / etaT;
-    cosThetaI = glm::clamp(cosThetaI, 0.0f, 1.0f);
     
     float sin2ThetaI = 1.0f - cosThetaI * cosThetaI;
     float sin2ThetaT = sin2ThetaI * eta * eta;
@@ -113,12 +103,12 @@ __host__ __device__ float computeFresnelReflectance(const Material& m, float cos
         float cosThetaT = glm::sqrt(1.0f - sin2ThetaT);
 
         float rPerp =
-            (etaI * cosThetaI - etaT * cosThetaT) /
-            (etaI * cosThetaI + etaT * cosThetaT);
+            (eta * cosThetaI -  cosThetaT) /
+            (eta * cosThetaI + cosThetaT);
 
         float rPar =
-            (etaT * cosThetaI - etaI * cosThetaT) /
-            (etaT * cosThetaI + etaI * cosThetaT);
+            (cosThetaI - eta * cosThetaT) /
+            (cosThetaI + eta * cosThetaT);
 
         F = 0.5f * (rPerp * rPerp + rPar * rPar);
     }
@@ -148,7 +138,7 @@ __host__ __device__ glm::vec3 sampleDielectric(
 
     float eta = etaI / etaT;
 
-    float F = computeFresnelReflectance(m, cosThetaI, etaI, etaT);
+    float F = computeFresnelReflectance(m, cosThetaI, eta);
 
     thrust::uniform_real_distribution<float> u01(0, 1);
     float probability = u01(rng);
@@ -192,17 +182,16 @@ __host__ __device__ glm::vec3 sampleDirectLighting(
 
     if (light.type == AREALIGHT) 
     {
-        glm::vec3 xy = glm::vec3(glm::mix(-0.5, 0.5, u01(rng)), glm::mix(-0.5, 0.5, u01(rng)), 0.0); // randomly sample a point in the arealight
+        glm::vec3 xy = glm::vec3(glm::mix(-0.5, 0.5, u01(rng)), 0.0,glm::mix(-0.5, 0.5, u01(rng))); // randomly sample a point in the arealight
 
-        glm::vec3 rand_pt_light_w = glm::vec3(light.inverseTransform * glm::vec4(xy, 1.)); // take random point in local light, transform to world coordinate
+        glm::vec3 rand_pt_light_w = glm::vec3(light.transform * glm::vec4(xy, 1.)); // take random point in local light, transform to world coordinate
 
         glm::vec3 view_point = pathSegment.ray.origin;
         glm::vec3 wiW = glm::normalize(rand_pt_light_w - view_point);
 
         float cosTheta = glm::dot(light.normal, -wiW);
-        
         // we are behind the light or our surface is facing away from the light
-        if (cosTheta <= 0. || glm::dot(normal, -wiW) <= 0.) {
+        if (cosTheta <= 0. ) {
             resulting_color = glm::vec3(0.f);
         }
         else
@@ -225,12 +214,13 @@ __host__ __device__ glm::vec3 sampleDirectLighting(
                 hit_geom_index
             ); 
 
-            float r = glm::length(wiW);
+            float r = glm::length(rand_pt_light_w - view_point);
 
             // we hit an occluder before reaching the light
-            if (hit_geom_index != -1 && t < r - EPSILON)
+            if (hit_geom_index != -1 && t < r)
             {
                 resulting_color = glm::vec3(0.);
+
             } 
             else 
             {
@@ -238,8 +228,8 @@ __host__ __device__ glm::vec3 sampleDirectLighting(
 
                 float pdf_dA = 1.f / area;
                 float pdf = pdf_dA * r*r / cosTheta; // account for falloff, and angle
-
                 resulting_color = light.color * light.intensity / pdf;
+
             }
         }
     }
@@ -272,7 +262,7 @@ __host__ __device__ glm::vec3 sampleDirectLighting(
 
             float r = glm::length(light.translation - view_point);
 
-            if (hit_geom_index != -1 && t < r - EPSILON) // hit an occluder
+            if (hit_geom_index != -1 && t < r) // hit an occluder
                 return glm::vec3(0.);
             else
                 return light.color * light.intensity / (r * r);
@@ -284,54 +274,59 @@ __host__ __device__ glm::vec3 sampleDirectLighting(
 
 
 __host__ __device__ void scatterRay(
-    PathSegment & pathSegment,
+    PathSegment& pathSegment,
     glm::vec3 intersect,
     glm::vec3 normal,
-    const Material &m,
+    const Material& m,
     Geom* geoms,
     int geoms_size,
     Light* l,
     int lights_size,
-    thrust::default_random_engine &rng)
+    thrust::default_random_engine& rng)
 {
-
     glm::vec3 resulting_color;
 
-    if (m.isDielectric > 0.) { // glass, water, plastic
+    if (m.isDielectric > 0.)
+    {
         resulting_color = sampleDielectric(
             pathSegment,
             intersect,
             normal,
             m,
             rng);
+
+        // Indirect
+        pathSegment.color *= resulting_color;
+
     }
-    // DIFFUSE
-    else {
+    else
+    {
         resulting_color = sampleDiffuse(
             pathSegment,
             intersect,
             normal,
             m,
-            rng); 
+            rng);
+
+        glm::vec3 resulting_color_direct = sampleDirectLighting(
+            pathSegment,
+            intersect,
+            normal,
+            geoms,
+            geoms_size,
+            l,
+            lights_size,
+            rng
+        );
+        // Direct lighting
+        float pdf = PI;
+
+        // Indirect
+        pathSegment.color *= resulting_color;
+        pathSegment.radiance += pathSegment.color * resulting_color * resulting_color_direct / pdf;
     }
 
-    resulting_color *= sampleDirectLighting(
-        pathSegment,
-        intersect,
-        normal,
-        geoms,
-        geoms_size,
-        l,
-        lights_size,
-        rng
-        );
-    if (glm::length(resulting_color) != 0.f)
-        printf("resulting color is %f %f %f at bounce %d\n ",
-            resulting_color.x, resulting_color.y, resulting_color.z, pathSegment.remainingBounces);
 
-    pathSegment.color *= resulting_color;
     if (pathSegment.color == glm::vec3(0.f))
-        pathSegment.remainingBounces = 0; // just terminate early at this point brah
-
-
+        pathSegment.remainingBounces = 0;
 }

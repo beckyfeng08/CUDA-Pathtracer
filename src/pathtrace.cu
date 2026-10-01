@@ -154,6 +154,7 @@ __global__ void generateRayFromCamera(Camera cam, int iter, int traceDepth, Path
 
         segment.ray.origin = cam.position;
         segment.color = glm::vec3(1.0f, 1.0f, 1.0f);
+        segment.radiance = glm::vec3(0.f);
 
         // jitter the ray for antialiasing effects
         thrust::default_random_engine rng = makeSeededRandomEngine(iter, index, segment.remainingBounces);
@@ -264,7 +265,6 @@ __global__ void shadeMaterial(
 
     // intersection doesn't hit anything or behind camera
     if (intersection.t <= 0.0f) {
-        pathSegment.color = glm::vec3(0.0f);
         pathSegment.remainingBounces = 0;
         return;
     }
@@ -277,10 +277,9 @@ __global__ void shadeMaterial(
         if (light.type == AREALIGHT) {
             // divide by the width and height
             contribution /= (light.scale.x * light.scale.z); // the width and length components
-            // also dot along normal
         }
         
-        pathSegment.color *= contribution;
+        pathSegment.radiance += pathSegment.color * contribution;
         pathSegment.remainingBounces = 0;
         
         return;
@@ -289,13 +288,14 @@ __global__ void shadeMaterial(
 
     // If the material indicates that the object was a light, "light" the ray
     if (material.emittance > 0.0f) {
-        pathSegment.color *= (material.color * material.emittance);
+        glm::vec3 emission = material.color * material.emittance;
+        pathSegment.radiance += pathSegment.color * emission;
+
         pathSegment.remainingBounces = 0;
         return;
     }
 
     if (pathSegment.remainingBounces <= 0) { // no contributionn if no more bounces
-        pathSegment.color = glm::vec3(0.f);
         return;
     }
 
@@ -320,20 +320,27 @@ __global__ void shadeMaterial(
 
 
     pathSegment.remainingBounces--;
-
-
 }
 
+//__host__ __device__ glm::vec3 gammaCorrect(glm::vec3 color)
+//{
+//
+//}
+
 // Add the current iteration's output to the overall image
-__global__ void finalGather(int nPaths, glm::vec3* image, PathSegment* iterationPaths)
+__global__ void finalGather(
+    int nPaths,
+    glm::vec3* image,
+    PathSegment* iterationPaths)
 {
     int index = (blockIdx.x * blockDim.x) + threadIdx.x;
-
     if (index < nPaths)
     {
         PathSegment iterationPath = iterationPaths[index];
-        if (iterationPath.remainingBounces <= 0) 
-            image[iterationPath.pixelIndex] += iterationPath.color;
+        if (iterationPath.remainingBounces <= 0)
+        {
+            image[iterationPath.pixelIndex] += iterationPath.radiance;
+        }
     }
 }
 // helper for thrust::sort. Sorts the array based on materialID
