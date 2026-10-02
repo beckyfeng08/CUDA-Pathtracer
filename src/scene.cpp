@@ -260,7 +260,7 @@ void Scene::load_materials(std::vector<tinyobj::material_t> objmaterials)
     for (auto objmat = objmaterials.begin(); objmat < objmaterials.end(); objmat++)
     {
         glm::vec3 color = glm::vec3((*objmat).diffuse[0], (*objmat).diffuse[1], (*objmat).diffuse[2]);
-        Material mat = {color, 0, 0, 0, 0, 0}; // hardcode vals, just do diffuse color for now
+        Material mat = {color, 0, 0, 0, 0, 0}; // TODO: fix the hardcode vals, we just do diffuse color for now
         materials.emplace_back(mat);
     }
 }
@@ -313,8 +313,11 @@ void Scene::load_triangles(const tinyobj::shape_t& shape)
 
         Triangle t = Triangle(v1, v2, v3, n1, n2, n3, uv1, uv2, uv3);
 
-        //  TODO: make triangle object
-        t.materialid = mat_ids[faceidx];
+        if (mat_ids[faceidx] == -1)
+        {
+            // TODO:just give it the default material we have rn, hardcoded, FIX LATER
+            t.materialid = 0s;
+        }
 
         // triangle does not need these attributes but just to populate empty data with something
         t.translation = glm::vec3(0.f);
