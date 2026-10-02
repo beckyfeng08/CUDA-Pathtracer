@@ -89,7 +89,7 @@ __host__ __device__ glm::vec3 samplePerfectSpecularTransmission(
 }
 
 // fresnel reflection from dielectrics and unpolarized light
-__host__ __device__ float computeFresnelReflectance(const Material& m, float cosThetaI, float eta)
+__host__ __device__ float computeFresnelReflectance(float cosThetaI, float eta)
 {
     
     float sin2ThetaI = 1.0f - cosThetaI * cosThetaI;
@@ -115,6 +115,13 @@ __host__ __device__ float computeFresnelReflectance(const Material& m, float cos
     return F;
 }
 
+// another way to calculate fresnel, faster but less physically accurate
+__host__ __device__ float computeSchlickApproxF(float cosThetaI, float eta)
+{
+    float R0 = ((eta - 1.f) * (eta - 1.f) / ((eta + 1.f) * (eta + 1.f)));
+    return R0 + (1.f - R0) * glm::pow(1.f - cosThetaI, 5.f);
+}
+
 __host__ __device__ glm::vec3 sampleDielectric(
     PathSegment & pathSegment,
     glm::vec3 intersect,
@@ -138,8 +145,8 @@ __host__ __device__ glm::vec3 sampleDielectric(
 
     float eta = etaI / etaT;
 
-    float F = computeFresnelReflectance(m, cosThetaI, eta);
-
+    //float F = computeFresnelReflectance(cosThetaI, eta);
+    float F = computeSchlickApproxF(cosThetaI, eta);
     thrust::uniform_real_distribution<float> u01(0, 1);
     float probability = u01(rng);
 
@@ -238,13 +245,16 @@ __host__ __device__ glm::vec3 sampleDirectLighting(
         glm::vec3 view_point = pathSegment.ray.origin;
 
         glm::vec3 wiW = glm::normalize(light.translation - view_point);
+        float r = glm::length(light.translation - view_point);
+        float ndotl = glm::dot(normal, wiW);
         //  our surface is facing away from the light
-        if (glm::dot(normal, -wiW) <= 0.) {
+        if (ndotl <= 0. || r > light.pointLight.range) {
             resulting_color = glm::vec3(0.);
         }
         else
         {
-            Ray ray = {view_point, wiW};
+
+            Ray ray = {view_point + normal * EPSILON, wiW}; // prevent self intersections
             // throwaway vars
             int hit_geom_index = -1;
             glm::vec3 normal;
@@ -260,12 +270,12 @@ __host__ __device__ glm::vec3 sampleDirectLighting(
                     hit_geom_index
                 );
 
-            float r = glm::length(light.translation - view_point);
 
             if (hit_geom_index != -1 && t < r) // hit an occluder
-                return glm::vec3(0.);
-            else
-                return light.color * light.intensity / (r * r);
+                resulting_color = glm::vec3(0.);
+            else {
+                resulting_color = light.color * light.intensity * ndotl / (r * r) ;
+            }
         }
     }
 
@@ -323,9 +333,8 @@ __host__ __device__ void scatterRay(
 
         // Indirect
         pathSegment.color *= resulting_color;
-        pathSegment.radiance += pathSegment.color * resulting_color * resulting_color_direct / pdf;
+        pathSegment.radiance += pathSegment.color * resulting_color_direct / pdf;
     }
-
 
     if (pathSegment.color == glm::vec3(0.f))
         pathSegment.remainingBounces = 0;

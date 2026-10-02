@@ -219,12 +219,14 @@ __global__ void computeIntersections(
             normal,
             hit_light_index
         );
+
         if (t < t_min)
             t_min = t;
 
 
         if (hit_geom_index == -1 && hit_light_index == -1) // no geometry was hit
         {
+
             intersections[path_index].t = -1.0f;
         }
         else if (hit_light_index != -1) // if we hit a light, then this should be updated, and be the first object the ray hits (updated t_min)
@@ -285,7 +287,6 @@ __global__ void shadeMaterial(
         return;
     }
 
-
     // If the material indicates that the object was a light, "light" the ray
     if (material.emittance > 0.0f) {
         glm::vec3 emission = material.color * material.emittance;
@@ -322,10 +323,13 @@ __global__ void shadeMaterial(
     pathSegment.remainingBounces--;
 }
 
-//__host__ __device__ glm::vec3 gammaCorrect(glm::vec3 color)
-//{
-//
-//}
+__host__ __device__ glm::vec3 gammaReinhardt(glm::vec3 color)
+{
+    glm::vec3 outcol = color / (color + glm::vec3(1.f));
+    outcol = glm::pow(outcol, glm::vec3(1.f / 2.2f));
+    return outcol;
+
+}
 
 // Add the current iteration's output to the overall image
 __global__ void finalGather(
@@ -339,7 +343,7 @@ __global__ void finalGather(
         PathSegment iterationPath = iterationPaths[index];
         if (iterationPath.remainingBounces <= 0)
         {
-            image[iterationPath.pixelIndex] += iterationPath.radiance;
+            image[iterationPath.pixelIndex] += gammaReinhardt(iterationPath.radiance);
         }
     }
 }
