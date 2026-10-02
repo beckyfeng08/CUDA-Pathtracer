@@ -41,6 +41,7 @@ struct Geom
     glm::mat4 transform;
     glm::mat4 inverseTransform;
     glm::mat4 invTranspose;
+    __host__ __device__
     Geom(GeomType type) : type(type) {}
 };
 

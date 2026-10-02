@@ -316,7 +316,7 @@ void Scene::load_triangles(const tinyobj::shape_t& shape)
         if (mat_ids[faceidx] == -1)
         {
             // TODO:just give it the default material we have rn, hardcoded, FIX LATER
-            t.materialid = 0s;
+            t.materialid = 0;
         }
 
         // triangle does not need these attributes but just to populate empty data with something
