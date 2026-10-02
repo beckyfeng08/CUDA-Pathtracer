@@ -46,16 +46,17 @@ struct Geom
 
 struct Triangle : Geom
 {
+    // the ints are indices to scene.vertices, scene.normals, and scene.uvs
      Triangle() : Geom(TRIANGLE) {}
-     Triangle(glm::vec3 v1,
-         glm::vec3 v2,
-         glm::vec3 v3,
-         glm::vec3 n1,
-         glm::vec3 n2,
-         glm::vec3 n3,
-         glm::vec2 uv1,
-         glm::vec2 uv2,
-         glm::vec2 uv3
+     Triangle(int v1,
+         int v2,
+         int v3,
+         int n1,
+         int n2,
+         int n3,
+         int uv1,
+         int uv2,
+         int uv3
          ) : Geom(TRIANGLE),
          v1(v1), v2(v2), v3(v3), 
          n1(n1), n2(n2), n3(n3), 
@@ -63,13 +64,11 @@ struct Triangle : Geom
      {}
 
     // vertices
-    glm::vec3 v1, v2, v3;
-
+    int v1, v2, v3,
     // normals
-    glm::vec3 n1, n2, n3;
-
+    n1, n2, n3,
     // uvs if need be
-    glm::vec2 uv1, uv2, uv3;
+    uv1, uv2, uv3;
 
 };
 

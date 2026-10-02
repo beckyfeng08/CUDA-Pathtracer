@@ -14,6 +14,7 @@
 #include <string>
 #include <unordered_map>
 
+// TODO: make unique ptrs for the geometry
 using namespace std;
 using json = nlohmann::json;
 
@@ -38,7 +39,6 @@ Scene::Scene(string filename)
         exit(-1);
     }
 }
-
 
 void Scene::set_up_camera_default(int resx, 
                                 int resy, 
@@ -125,6 +125,7 @@ void Scene::set_up_render_cam(Camera& camera, RenderState& state)
     std::fill(state.image.begin(), state.image.end(), glm::vec3());
 
 }
+
 void Scene::loadFromJSON(const std::string& jsonName)
 {
 
@@ -255,6 +256,80 @@ void Scene::loadFromJSON(const std::string& jsonName)
 }
 
 
+void Scene::load_materials(std::vector<tinyobj::material_t> objmaterials)
+{
+    for (auto objmat = objmaterials.begin(); objmat < objmaterials.end(); objmat++)
+    {
+        glm::vec3 color = glm::vec3((*objmat).diffuse[0], (*objmat).diffuse[1], (*objmat).diffuse[2]);
+        Material mat = {color, 0, 0, 0, 0, 0}; // hardcode vals, just do diffuse color for now
+        materials.emplace_back(mat);
+    }
+}
+void Scene::populateBuffers(const tinyobj::attrib_t& attrib)
+{
+
+    for (int i = 0; i < attrib.vertices.size(); i+= 3)
+    {
+        float v1 = attrib.vertices[i];
+        float v2 = attrib.vertices[i + 1];
+        float v3 = attrib.vertices[i + 2];
+        vertices.push_back(glm::vec3(v1, v2, v3));
+    }
+    for (int i = 0; i < attrib.normals.size(); i+= 3)
+    {
+        float n1 = attrib.normals[i];
+        float n2 = attrib.normals[i + 1];
+        float n3 = attrib.normals[i + 2];
+        normals.push_back(glm::vec3(n1, n2, n3));
+    }
+    
+    for (int i = 0; i < attrib.texcoords.size(); i += 2)
+    {
+        float uv1 = attrib.texcoords[i];
+        float uv2 = attrib.texcoords[i + 1];
+        uvs.push_back(glm::vec2(uv1, uv2));
+    }
+
+}
+
+void Scene::load_triangles(auto& shape)
+{
+    const vector<tinyobj::index_t> & indices = shape.mesh.indices;
+    const vector<int> & mat_ids = shape.mesh.material_ids;
+    std::cout << "Loading " << mat_ids.size() << " triangles..." << std::endl;
+    // populate with face data
+    for (size_t faceidx = 0; faceidx < mat_ids.size(); faceidx++)
+    {
+        int v1 = indices[3 * faceidx].vertex_index;
+        int v2 = indices[3 * faceidx + 1].vertex_index;
+        int v3 = indices[3 * faceidx + 2].vertex_index;
+
+        int n1 = indices[3 * faceidx].normal_index;
+        int n2 = indices[3 * faceidx + 1].normal_index;
+        int n3 = indices[3 * faceidx + 2].normal_index;
+
+        int uv1 = indices[3 * faceidx].texcoord_index;
+        int uv2 = indices[3 * faceidx + 1].texcoord_index;
+        int uv3 = indices[3 * faceidx + 2].texcoord_index;
+
+        Triangle t = Triangle(v1, v2, v3, n1, n2, n3, uv1, uv2, uv3);
+
+        //  TODO: make triangle object
+        t.materialid = mat_ids[faceidx];
+
+        // triangle does not need these attributes but just to populate empty data with something
+        t.translation = glm::vec3(0.f);
+        t.rotation = glm::vec3(0.f);
+        t.scale = glm::vec3(1.f);
+        t.transform = utilityCore::buildTransformationMatrix(
+            t.translation, t.rotation, t.scale);
+        t.inverseTransform = glm::inverse(t.transform);
+        t.invTranspose = glm::inverseTranspose(t.transform);
+
+        geoms.push_back(t);
+    }
+}
+
 void Scene::loadFromOBJ(const std::string& filenameOBJ, const std::string& filenameMTL)
 {
     // load obj wrapper referenced from https://github.com/canmom/rasteriser/blob/master/fileloader.cpp
@@ -270,61 +345,27 @@ void Scene::loadFromOBJ(const std::string& filenameOBJ, const std::string& filen
             nullptr, //directory to search for materials
             true); 
     else
-
         success = tinyobj::LoadObj(&attrib, &shapes, &objmaterials, &err,
             filename.c_str(), //model to load
             filenameMTL.c_str(), //directory to search for materials
             true); 
     
-            if (!err.empty()) {
+    if (!err.empty()) {
         std::cerr << err << std::endl;
     }
     if (!success) {
         exit(1);
     }
 
-    // vertices, normal, and uvs to our format
-    assert(attrib.vertices.size() == attrib.normals.size());
+    load_materials(objmaterials);
 
-    // TODO: handle loading materials
-    // tbh idc im just gonna make it diffuse
-    Material mat = {glm::vec3(0.95), 0.f, 0.f, 0.f, 0.f, 0.f};
-    materials.emplace_back(mat);
+    // populate a vertex, normal and uv buffer for triangles
+    populateBuffers(attrib);
 
-    // populate a triangle normal and uv buffer
-    for (int i = 0; i < attrib.vertices.size(); i+= 3)
-    {
-        float v1 = attrib.vertices[i];
-        float v2 = attrib.vertices[i + 1];
-        float v3 = attrib.vertices[i + 2];
-
-        float n1 = attrib.normals[i];
-        float n2 = attrib.normals[i + 1];
-        float n3 = attrib.normals[i + 2];
-        float uv1 = attrib.texcoords[i];
-        float uv2 = attrib.texcoords[i + 1];
-
-      
-    }
-
-    // for loop here after figuring out faces
-    Triangle t = Triangle(v1, v2, v3,
-        n1, n2, n3,
-        uv1, uv2, uv3);
-
-    t.materialid = 0; // TODO: referring to first material, change if we do better material support
-
-    // triangle does not need these attributes but lets populate them in case something happens
-    t.translation = glm::vec3(0.f);
-    t.rotation = glm::vec3(0.f);
-    t.scale = glm::vec3(1.f);
-    t.transform = utilityCore::buildTransformationMatrix(
-        t.translation, t.rotation, t.scale);
-    t.inverseTransform = glm::inverse(t.transform);
-    t.invTranspose = glm::inverseTranspose(t.transform);
-
-    geoms.push_back(t);
-   
+    // populate the geoms buffer with Triangle structs, per object in the scene
+    for (auto shape = shapes.begin(); shape < shapes.end(); shape++)
+        load_triangles(shape);
+    
     // hardcoded lights and camera in scene
 
     set_up_default_lights(glm::vec3(0.95, 0.9, 0.7));
@@ -336,4 +377,5 @@ void Scene::loadFromOBJ(const std::string& filenameOBJ, const std::string& filen
 
     //required for display: set up render camera stuff
     set_up_render_cam(camera, state);
+    printf("number of triangles in the scene: %d", geoms.size());
 }

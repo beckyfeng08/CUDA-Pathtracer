@@ -19,6 +19,8 @@ private:
     );
     void set_up_default_lights(glm::vec3 color);
     void set_up_render_cam(Camera& camera, RenderState& state);
+    void populateBuffers(const tinyobj::attrib_t& attrib);
+    void load_triangles(auto& shape);
     void loadFromOBJ(const std::string& filenameOBJ, const std::string& filenameMTL);
 
 public:
@@ -27,5 +29,11 @@ public:
     std::vector<Geom> geoms;
     std::vector<Material> materials;
     std::vector<Light> lights;
+
+    // for triangles
+    std::vector<glm::vec3> vertices;
+    std::vector<glm::vec3> normals;
+    std::vector<glm::vec2> uvs;
+
     RenderState state;
 };
