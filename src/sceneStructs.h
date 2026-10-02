@@ -12,8 +12,10 @@
 enum GeomType
 {
     SPHERE,
-    CUBE
+    CUBE,
+    TRIANGLE
 };
+
 
 enum LightType
 {
@@ -27,6 +29,8 @@ struct Ray
     glm::vec3 direction;
 };
 
+
+
 struct Geom
 {
     enum GeomType type;
@@ -37,6 +41,24 @@ struct Geom
     glm::mat4 transform;
     glm::mat4 inverseTransform;
     glm::mat4 invTranspose;
+};
+
+struct Triangle : Geom
+{
+    // vertices
+    glm::vec3 v1;
+    glm::vec3 v2;
+    glm::vec3 v3;
+
+    // normals
+    glm::vec3 n1;
+    glm::vec3 n2;
+    glm::vec3 n3;
+
+    // uvs if need be
+    glm::vec2 uv1;
+    glm::vec2 uv2;
+    glm::vec2 uv3;
 };
 
 struct Material

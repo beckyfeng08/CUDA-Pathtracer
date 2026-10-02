@@ -1,11 +1,13 @@
 #include "scene.h"
 
 #include "utilities.h"
+#include "tiny_obj_loader.h"
 
 #include <glm/gtc/matrix_inverse.hpp>
 #include <glm/gtx/string_cast.hpp>
 #include "json.hpp"
 
+#include <vector>
 #include <fstream>
 #include <iostream>
 #include <string>
@@ -24,6 +26,11 @@ Scene::Scene(string filename)
         loadFromJSON(filename);
         return;
     }
+    else if (ext == ".obj")
+    {
+        loadFromOBJ(filename);
+        return;
+    }
     else
     {
         cout << "Couldn't read from " << filename << endl;
@@ -33,6 +40,7 @@ Scene::Scene(string filename)
 
 void Scene::loadFromJSON(const std::string& jsonName)
 {
+
     std::ifstream f(jsonName);
     json data = json::parse(f);
     const auto& materialsData = data["Materials"];
@@ -159,4 +167,63 @@ void Scene::loadFromJSON(const std::string& jsonName)
     int arraylen = camera.resolution.x * camera.resolution.y;
     state.image.resize(arraylen);
     std::fill(state.image.begin(), state.image.end(), glm::vec3());
+}
+
+void Scene::loadFromOBJ(const std::string& filenameOBJ, const std::string& filenameMTL)
+{
+    // load obj wrapper referenced from https://github.com/canmom/rasteriser/blob/master/fileloader.cpp
+
+    tinyobj::attrib_t attrib;
+    std::vector<tinyobj::shape_t> shapes;
+    std::vector<tinyobj::material_t> objmaterials;
+    std::string err;
+    bool success;
+    if (filenameMTL.empty())
+        success = tinyobj::LoadObj(&attrib, &shapes, &objmaterials, &err,
+            filename.c_str(), //model to load
+            nullptr, //directory to search for materials
+            true); 
+    else
+
+        success = tinyobj::LoadObj(&attrib, &shapes, &objmaterials, &err,
+            filename.c_str(), //model to load
+            filenameMTL.c_str(), //directory to search for materials
+            true); 
+    
+            if (!err.empty()) {
+        std::cerr << err << std::endl;
+    }
+    if (!success) {
+        exit(1);
+    }
+
+    // vertices, normal, and uvs to our format
+    assert(attrib.vertices.size() == attrib.normals.size());
+
+    // populate our own scene from the data read from tinyobj
+    for (int i = 0; i < attrib.vertices.size(); i+= 3)
+    {
+        float v1 = attrib.vertices[i];
+        float v2 = attrib.vertices[i + 1];
+        float v3 = attrib.vertices[i + 2];
+
+        float n1 = attrib.normals[i];
+        float n2 = attrib.normals[i + 1];
+        float n3 = attrib.normals[i + 2];
+        float uv1 = attrib.texcoords[i];
+        float uv2 = attrib.texcoords[i + 1];
+        
+        Triangle t = {
+            v1, v2, v3,
+            n1, n2, n3, 
+            uv1, uv2
+        };
+
+        t.materialid = 1; // TODO: referring to first material
+        
+        geoms.push_back(t);
+    }
+    // TODO: handle loading materials
+    Material mat = {glm::vec3(0.95), 0.f, 0,.f 0.f, 0.f, 0.f};
+    materials.emplace_back(mat);
 }
