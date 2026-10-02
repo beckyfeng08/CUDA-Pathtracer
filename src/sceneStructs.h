@@ -41,24 +41,21 @@ struct Geom
     glm::mat4 transform;
     glm::mat4 inverseTransform;
     glm::mat4 invTranspose;
+    Geom(GeomType type) : type(type) {}
 };
 
 struct Triangle : Geom
 {
+     Triangle() : Geom(TRIANGLE) {}
     // vertices
-    glm::vec3 v1;
-    glm::vec3 v2;
-    glm::vec3 v3;
+    glm::vec3 v1, v2, v3;
 
     // normals
-    glm::vec3 n1;
-    glm::vec3 n2;
-    glm::vec3 n3;
+    glm::vec3 n1, n2, n3;
 
     // uvs if need be
-    glm::vec2 uv1;
-    glm::vec2 uv2;
-    glm::vec2 uv3;
+    glm::vec2 uv1, uv2, uv3;
+
 };
 
 struct Material

@@ -1,5 +1,6 @@
 #include "scene.h"
 
+#include "sceneStructs.h"
 #include "utilities.h"
 #include "tiny_obj_loader.h"
 
@@ -38,6 +39,92 @@ Scene::Scene(string filename)
     }
 }
 
+
+void Scene::set_up_camera_default(int resx, 
+                                int resy, 
+                                float fovy, 
+                                int iterations,
+                                int depth,
+                                std::string fileName,
+                                glm::vec3 camPos,
+                                glm::vec3 camLookAt,
+                                glm::vec3 camUp
+)
+{
+    Camera& camera = state.camera;
+    RenderState& state = this->state;
+    camera.resolution.x = resx;
+    camera.resolution.y = resy;
+    float fovy = fovy;
+    state.iterations = iterations;
+    state.traceDepth = depth;
+    state.imageName = fileName;
+
+    camera.position = camPos;
+    camera.lookAt = camLookAt;
+    camera.up = camUp;
+
+    //calculate fov based on resolution
+    float yscaled = tan(fovy * (PI / 180));
+    float xscaled = (yscaled * camera.resolution.x) / camera.resolution.y;
+    float fovx = (atan(xscaled) * 180) / PI;
+    camera.fov = glm::vec2(fovx, fovy);
+
+    camera.right = glm::normalize(glm::cross(camera.view, camera.up));
+    camera.pixelLength = glm::vec2(2 * xscaled / (float)camera.resolution.x,
+        2 * yscaled / (float)camera.resolution.y);
+
+    camera.view = glm::normalize(camera.lookAt - camera.position);
+
+}
+
+void Scene::set_up_default_lights(glm::vec3 color)
+{
+    // modify as necessary. There is a point and area light in here
+    Light default_area_light;
+    default_area_light.type = AREALIGHT;
+    default_area_light.color = color;
+    default_area_light.intensity = 10;
+
+    default_area_light.translation = glm::vec3(0.0, 9.99, 0.0);
+    default_area_light.rotation = glm::vec3(180.0, 0.0, 0.0);
+    default_area_light.scale = glm::vec3(1.f);
+
+    default_area_light.transform = utilityCore::buildTransformationMatrix(
+        default_area_light.translation, default_area_light.rotation, default_area_light.scale);
+    default_area_light.inverseTransform = glm::inverse(default_area_light.transform);
+    default_area_light.invTranspose = glm::inverseTranspose(default_area_light.transform);
+    default_area_light.normal = glm::normalize(glm::vec3(default_area_light.transform[1]));
+
+
+    Light default_point_light;
+    default_point_light.type = POINTLIGHT;
+    default_point_light.pointLight.decay = 10.0;
+    default_point_light.pointLight.range = 20.0;
+    default_point_light.color = color;
+    default_point_light.intensity = 10;
+    default_point_light.translation = glm::vec3(-3.0, 4.99, 0.0);
+    default_point_light.rotation = glm::vec3(0.0, 0.0, 0.0);
+    default_point_light.scale = glm::vec3(1.f);
+
+    default_point_light.transform = utilityCore::buildTransformationMatrix(
+        default_point_light.translation, default_point_light.rotation, default_point_light.scale);
+    default_point_light.inverseTransform = glm::inverse(default_point_light.transform);
+    default_point_light.invTranspose = glm::inverseTranspose(default_point_light.transform);
+    default_point_light.normal = glm::normalize(glm::vec3(default_point_light.transform[1]));
+
+    light.push_back(default_area_light);
+    lights.push_back(default_point_light);
+}
+
+void Scene::set_up_render_cam(Camera& camera, RenderState& state)
+{
+    //set up render camera stuff
+    int arraylen = camera.resolution.x * camera.resolution.y;
+    state.image.resize(arraylen);
+    std::fill(state.image.begin(), state.image.end(), glm::vec3());
+
+}
 void Scene::loadFromJSON(const std::string& jsonName)
 {
 
@@ -163,11 +250,10 @@ void Scene::loadFromJSON(const std::string& jsonName)
 
     camera.view = glm::normalize(camera.lookAt - camera.position);
 
-    //set up render camera stuff
-    int arraylen = camera.resolution.x * camera.resolution.y;
-    state.image.resize(arraylen);
-    std::fill(state.image.begin(), state.image.end(), glm::vec3());
+    set_up_render_cam(camera, state);
+
 }
+
 
 void Scene::loadFromOBJ(const std::string& filenameOBJ, const std::string& filenameMTL)
 {
@@ -200,6 +286,11 @@ void Scene::loadFromOBJ(const std::string& filenameOBJ, const std::string& filen
     // vertices, normal, and uvs to our format
     assert(attrib.vertices.size() == attrib.normals.size());
 
+    // TODO: handle loading materials
+    // tbh idc im just gonna make it diffuse
+    Material mat = {glm::vec3(0.95), 0.f, 0.f, 0.f, 0.f, 0.f};
+    materials.emplace_back(mat);
+
     // populate our own scene from the data read from tinyobj
     for (int i = 0; i < attrib.vertices.size(); i+= 3)
     {
@@ -219,11 +310,29 @@ void Scene::loadFromOBJ(const std::string& filenameOBJ, const std::string& filen
             uv1, uv2
         };
 
-        t.materialid = 1; // TODO: referring to first material
-        
+        t.materialid = 0; // TODO: referring to first material, change if we do better material support
+
+        // triangle does not need these attributes but lets populate them in case something happens
+        t.translation = glm::vec3(0.f);
+        t.rotation = glm::vec3(0.f);
+        t.scale = glm::vec3(1.f);
+        t.transform = utilityCore::buildTransformationMatrix(
+            t.translation, t.rotation, t.scale);
+        t.inverseTransform = glm::inverse(t.transform);
+        t.invTranspose = glm::inverseTranspose(t.transform);
+
         geoms.push_back(t);
     }
-    // TODO: handle loading materials
-    Material mat = {glm::vec3(0.95), 0.f, 0,.f 0.f, 0.f, 0.f};
-    materials.emplace_back(mat);
+   
+    // hardcoded lights and camera in scene
+
+    set_up_default_lights();
+
+    set_up_camera_default(800, 800, 45.f, 5000, 8, filenameOBJ, 
+                                glm::vec3(0.f, 5.f, 10.5),
+                                glm::vec3(0.f, 5.f, 0.f),
+                                glm::vec3(0.f, 1.f, 0.f));
+
+    //required for display: set up render camera stuff
+    set_up_render_cam(camera, state);
 }
