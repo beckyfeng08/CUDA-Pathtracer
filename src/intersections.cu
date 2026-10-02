@@ -174,16 +174,14 @@ __host__ __device__ float lightIntersectionTest(
             if (light.type == AREALIGHT)
             {
                 // use a cube as a dummy to represent the light for intersection
-                Geom placeholdersquare = {
-                    CUBE, 
-                    0, 
-                    light.translation,
-                    light.rotation, 
-                    light.scale,
-                    light.transform, 
-                    light.inverseTransform, 
-                    light.invTranspose
-                };
+                Geom placeholdersquare = Geom(CUBE);
+                placeholdersquare.materialid = 0;
+                placeholdersquare.translation = light.translation;
+                placeholdersquare.rotation = light.rotation;
+                placeholdersquare.scale = light.scale;
+                placeholdersquare.transform = light.transform;
+                placeholdersquare.inverseTransform = light.inverseTransform;
+                placeholdersquare.invTranspose = light.invTranspose;
 
                 t = boxIntersectionTest(placeholdersquare, r, tmp_intersect, tmp_normal, outside);
             }

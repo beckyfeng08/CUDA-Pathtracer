@@ -45,7 +45,7 @@ void Scene::set_up_camera_default(int resx,
                                 float fovy, 
                                 int iterations,
                                 int depth,
-                                std::string fileName,
+                                const std::string& fileName,
                                 glm::vec3 camPos,
                                 glm::vec3 camLookAt,
                                 glm::vec3 camUp
@@ -113,7 +113,7 @@ void Scene::set_up_default_lights(glm::vec3 color)
     default_point_light.invTranspose = glm::inverseTranspose(default_point_light.transform);
     default_point_light.normal = glm::normalize(glm::vec3(default_point_light.transform[1]));
 
-    light.push_back(default_area_light);
+    lights.push_back(default_area_light);
     lights.push_back(default_point_light);
 }
 
@@ -291,7 +291,7 @@ void Scene::loadFromOBJ(const std::string& filenameOBJ, const std::string& filen
     Material mat = {glm::vec3(0.95), 0.f, 0.f, 0.f, 0.f, 0.f};
     materials.emplace_back(mat);
 
-    // populate our own scene from the data read from tinyobj
+    // populate a triangle normal and uv buffer
     for (int i = 0; i < attrib.vertices.size(); i+= 3)
     {
         float v1 = attrib.vertices[i];
@@ -303,30 +303,31 @@ void Scene::loadFromOBJ(const std::string& filenameOBJ, const std::string& filen
         float n3 = attrib.normals[i + 2];
         float uv1 = attrib.texcoords[i];
         float uv2 = attrib.texcoords[i + 1];
-        
-        Triangle t = {
-            v1, v2, v3,
-            n1, n2, n3, 
-            uv1, uv2
-        };
 
-        t.materialid = 0; // TODO: referring to first material, change if we do better material support
-
-        // triangle does not need these attributes but lets populate them in case something happens
-        t.translation = glm::vec3(0.f);
-        t.rotation = glm::vec3(0.f);
-        t.scale = glm::vec3(1.f);
-        t.transform = utilityCore::buildTransformationMatrix(
-            t.translation, t.rotation, t.scale);
-        t.inverseTransform = glm::inverse(t.transform);
-        t.invTranspose = glm::inverseTranspose(t.transform);
-
-        geoms.push_back(t);
+      
     }
+
+    // for loop here after figuring out faces
+    Triangle t = Triangle(v1, v2, v3,
+        n1, n2, n3,
+        uv1, uv2, uv3);
+
+    t.materialid = 0; // TODO: referring to first material, change if we do better material support
+
+    // triangle does not need these attributes but lets populate them in case something happens
+    t.translation = glm::vec3(0.f);
+    t.rotation = glm::vec3(0.f);
+    t.scale = glm::vec3(1.f);
+    t.transform = utilityCore::buildTransformationMatrix(
+        t.translation, t.rotation, t.scale);
+    t.inverseTransform = glm::inverse(t.transform);
+    t.invTranspose = glm::inverseTranspose(t.transform);
+
+    geoms.push_back(t);
    
     // hardcoded lights and camera in scene
 
-    set_up_default_lights();
+    set_up_default_lights(glm::vec3(0.95, 0.9, 0.7));
 
     set_up_camera_default(800, 800, 45.f, 5000, 8, filenameOBJ, 
                                 glm::vec3(0.f, 5.f, 10.5),
