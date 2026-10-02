@@ -2,7 +2,6 @@
 
 #include "sceneStructs.h"
 #include "utilities.h"
-#include "tiny_obj_loader.h"
 
 #include <glm/gtc/matrix_inverse.hpp>
 #include <glm/gtx/string_cast.hpp>
@@ -30,7 +29,7 @@ Scene::Scene(string filename)
     }
     else if (ext == ".obj")
     {
-        loadFromOBJ(filename);
+        loadFromOBJ(filename, "");
         return;
     }
     else
@@ -55,7 +54,6 @@ void Scene::set_up_camera_default(int resx,
     RenderState& state = this->state;
     camera.resolution.x = resx;
     camera.resolution.y = resy;
-    float fovy = fovy;
     state.iterations = iterations;
     state.traceDepth = depth;
     state.imageName = fileName;
@@ -200,15 +198,8 @@ void Scene::loadFromJSON(const std::string& jsonName)
     for (const auto& p : objectsData)
     {
         const auto& type = p["TYPE"];
-        Geom newGeom;
-        if (type == "cube")
-        {
-            newGeom.type = CUBE;
-        }
-        else
-        {
-            newGeom.type = SPHERE;
-        }
+        Geom newGeom = type == "cube"? Geom(CUBE) : Geom(SPHERE);
+
         newGeom.materialid = MatNameToID[p["MATERIAL"]];
         const auto& trans = p["TRANS"];
         const auto& rotat = p["ROTAT"];
@@ -258,6 +249,14 @@ void Scene::loadFromJSON(const std::string& jsonName)
 
 void Scene::load_materials(std::vector<tinyobj::material_t> objmaterials)
 {
+    if (objmaterials.empty())
+    {
+        // make diffuse the default material
+        glm::vec3 color(1.0, 1.0, 1.0);
+        Material mat = { color, 0, 0, 0, 0, 0 }; // hardcode vals, just do diffuse color for now
+        materials.emplace_back(mat);
+    }
+
     for (auto objmat = objmaterials.begin(); objmat < objmaterials.end(); objmat++)
     {
         glm::vec3 color = glm::vec3((*objmat).diffuse[0], (*objmat).diffuse[1], (*objmat).diffuse[2]);
@@ -292,7 +291,7 @@ void Scene::populateBuffers(const tinyobj::attrib_t& attrib)
 
 }
 
-void Scene::load_triangles(auto& shape)
+void Scene::load_triangles(const tinyobj::shape_t& shape)
 {
     const vector<tinyobj::index_t> & indices = shape.mesh.indices;
     const vector<int> & mat_ids = shape.mesh.material_ids;
@@ -337,18 +336,32 @@ void Scene::loadFromOBJ(const std::string& filenameOBJ, const std::string& filen
     tinyobj::attrib_t attrib;
     std::vector<tinyobj::shape_t> shapes;
     std::vector<tinyobj::material_t> objmaterials;
+    std::string warn;
     std::string err;
     bool success;
     if (filenameMTL.empty())
-        success = tinyobj::LoadObj(&attrib, &shapes, &objmaterials, &err,
-            filename.c_str(), //model to load
-            nullptr, //directory to search for materials
-            true); 
+        success = tinyobj::LoadObj(
+            &attrib,
+            &shapes,
+            &objmaterials,
+            &warn,
+            &err,
+            filenameOBJ.c_str(),
+            nullptr,
+            true
+        );
     else
-        success = tinyobj::LoadObj(&attrib, &shapes, &objmaterials, &err,
-            filename.c_str(), //model to load
-            filenameMTL.c_str(), //directory to search for materials
-            true); 
+        success = tinyobj::LoadObj(
+            &attrib,
+            &shapes,
+            &objmaterials,
+            &warn,
+            &err,
+            filenameOBJ.c_str(),
+            filenameMTL.c_str(),
+            true
+        );
+   
     
     if (!err.empty()) {
         std::cerr << err << std::endl;
@@ -364,7 +377,7 @@ void Scene::loadFromOBJ(const std::string& filenameOBJ, const std::string& filen
 
     // populate the geoms buffer with Triangle structs, per object in the scene
     for (auto shape = shapes.begin(); shape < shapes.end(); shape++)
-        load_triangles(shape);
+        load_triangles(*shape);
     
     // hardcoded lights and camera in scene
 
@@ -376,6 +389,6 @@ void Scene::loadFromOBJ(const std::string& filenameOBJ, const std::string& filen
                                 glm::vec3(0.f, 1.f, 0.f));
 
     //required for display: set up render camera stuff
-    set_up_render_cam(camera, state);
+    set_up_render_cam(state.camera, this->state);
     printf("number of triangles in the scene: %d", geoms.size());
 }

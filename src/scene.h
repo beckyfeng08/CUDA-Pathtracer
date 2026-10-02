@@ -1,6 +1,8 @@
 #pragma once
 
 #include "sceneStructs.h"
+#include "tiny_obj_loader.h"
+
 #include <vector>
 
 class Scene
@@ -20,7 +22,8 @@ private:
     void set_up_default_lights(glm::vec3 color);
     void set_up_render_cam(Camera& camera, RenderState& state);
     void populateBuffers(const tinyobj::attrib_t& attrib);
-    void load_triangles(auto& shape);
+    void load_triangles(const tinyobj::shape_t& shape);
+    void load_materials(std::vector<tinyobj::material_t> objmaterials);
     void loadFromOBJ(const std::string& filenameOBJ, const std::string& filenameMTL);
 
 public:
