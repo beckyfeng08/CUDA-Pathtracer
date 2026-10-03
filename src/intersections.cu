@@ -182,7 +182,7 @@ __host__ __device__ float areaLightIntersectionTest(
         return -1.f;
 
     // some point on the light, x local coord transformed onto light
-    glm::vec3 P0 = light.transform * glm::vec4(0.f, 0.f, 0.f, 1.f);
+    glm::vec3 P0 = glm::vec3(light.transform * glm::vec4(0.f, 0.f, 0.f, 1.f));
     float t = glm::dot(P0 - r.origin, light.normal) / ndotl;
 
     if (t < 0.f) return -1.f;
