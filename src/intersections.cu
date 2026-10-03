@@ -118,9 +118,44 @@ __host__ __device__ float triangleIntersectionTest(Geom triangle,
     glm::vec3 &normal,
     bool &outside)
 {
-    // TOOD: barycentrics or whatever
-    // get vertices, normals, and stuff
-    return 0.f;
+    // ray plane intersection
+    float ndotr = (r.direction, triangle.normal);
+    
+    // it is parallel to the plane
+    if (glm::abs(ndotr) < EPSILON) return -1.f;
+
+    float t = glm::dot(triangle.v1 - r.origin, triangle.normal) / ndotr;
+    if (t < 0.f) return -1.f;
+
+    // check if point is within triangle bounds
+    glm::vec3 pointOnPlane_w = r.origin + t * r.direction;
+
+    // check edge v1 -> v2
+    glm::vec3 v1p = pointOnPlane_w - triangle.v1;
+    glm::vec3 v1v2 = triangle.v2 - triangle.v1;
+    c = glm::cross(v1v2, v1p);
+
+    if (glm::dot(triangle.normal, c) < 0.f) return -1;
+
+    // check edge v2 -> v3
+    glm::vec3 v2p = pointOnPlane_w - triangle.v2;
+    glm::vec3 v2v3 = triangle.v3 - triangle.v2;
+    c = glm::cross(v2v3, v2p);
+
+    if (glm::dot(triangle.normal, c) < 0.f) return -1.f;
+
+    // check edge v3-> v1
+    glm::vec3 v3p = pointOnPlane_w - triangle.v3;
+    glm::vec3 v3v1 = triangle.v1 - triangle.v3;
+    glm::vec3 c = glm::cross(v3v1, v3p);
+
+    if (glm::dot(triangle.normal, c) < 0.f) return -1.f;
+
+    intersectionPoint = pointOnPlane_w;
+    normal = triangle.normal;
+    outside = ndotr < 0;
+
+    return t;
 }
 
 // sub-process of computeIntersections in pathtrace.cu
