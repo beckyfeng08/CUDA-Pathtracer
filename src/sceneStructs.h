@@ -45,6 +45,18 @@ struct Geom
     glm::mat4 inverseTransform;
     glm::mat4 invTranspose;
 
+    // for triangles
+    glm::vec3 v1, v2, v3;
+    glm::vec3 normal;
+    bool hasUVs;
+    glm::vec2 uv1, uv2, uv3;
+    glm::vec3 centroid;
+
+    struct {
+        glm::vec3 minCorner;
+        glm::vec3 maxCorner;
+    } bbox;
+
     __host__ __device__
     Geom(GeomType type)
         : type(type),
@@ -58,65 +70,36 @@ struct Geom
         inverseTransform = glm::inverse(transform);
         invTranspose = glm::transpose(glm::inverse(transform));
     }
-};
 
-struct Triangle : Geom
-{
-    glm::vec3 v1, v2, v3;
-    glm::vec3 normal;
-    bool hasUVs;
-    glm::vec2 uv1, uv2, uv3;
-    glm::vec3 centroid;
-
-    struct {
-        glm::vec3 minCorner;
-        glm::vec3 maxCorner;
-    } bbox;
-
-    Triangle() : Geom(TRIANGLE)
-    {}
-
-    Triangle(
-        glm::vec3 _v1,
+    __host__ __device__
+    // triangle constructor
+    Geom(glm::vec3 _v1,
         glm::vec3 _v2,
-        glm::vec3 _v3,
-        glm::vec2 _uv1,
-        glm::vec2 _uv2,
-        glm::vec2 _uv3)
-        : Geom(TRIANGLE),
+        glm::vec3 _v3):
+         Geom(TRIANGLE),
           v1(_v1),
           v2(_v2),
           v3(_v3),
-          uv1(_uv1),
-          uv2(_uv2),
-          uv3(_uv3),
-          hasUVs(true)
-    {
+          materialid(0),
+          translation(0.f),
+          rotation(0.f),
+          scale(1.f)
+        {
         centroid = (v1 + v2 + v3) / 3.f;
 
         bbox.minCorner = glm::min(v1, glm::min(v2, v3));
         bbox.maxCorner = glm::max(v1, glm::max(v2, v3));
 
         normal = glm::cross(v2 - v1, v3 - v1);
-    }
 
-    Triangle(
-        glm::vec3 _v1,
-        glm::vec3 _v2,
-        glm::vec3 _v3)
-        : Geom(TRIANGLE),
-        hasUVs(false),
-          v1(_v1),
-          v2(_v2),
-          v3(_v3)
-    {
-        centroid = (v1 + v2 + v3) / 3.f;
+        transform = utilityCore::buildTransformationMatrix(
+              translation, rotation, scale);
+        inverseTransform = glm::inverse(transform);
+        invTranspose = glm::transpose(glm::inverse(transform));
+        // if there are uvs be sure to manually do something for them
+    };
 
-        bbox.minCorner = glm::min(v1, glm::min(v2, v3));
-        bbox.maxCorner = glm::max(v1, glm::max(v2, v3));
 
-        normal = glm::cross(v2 - v1, v3 - v1);
-    }
 };
 
 struct Material

@@ -304,7 +304,7 @@ void Scene::load_triangles(const tinyobj::shape_t& shape,
         glm::vec3 v2 = vertices[vidx2];
         glm::vec3 v3 = vertices[vidx3];
 
-        Triangle t = Triangle(v1, v2, v3);
+        Geom t = Geom(v1, v2, v3);
 
         // uvs
         if (uvs.size() > 0) { 
@@ -377,7 +377,7 @@ void Scene::loadFromOBJ(const std::string& filenameOBJ, const std::string& filen
 
     printf("size of vertices buffer %d, uvs, %d", vertices.size(), uvs.size());
 
-    // populate the geoms buffer with Triangle structs, per object in the scene
+    // populate the geoms buffer with geom structs, per object in the scene
     for (auto shape = shapes.begin(); shape < shapes.end(); shape++)
         load_triangles(*shape, vertices, uvs);
     
