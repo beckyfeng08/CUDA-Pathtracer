@@ -55,7 +55,7 @@ struct Geom
           transform(utilityCore::buildTransformationMatrix(
               translation, rotation, scale)),
           inverseTransform(glm::inverse(transform)),
-          invTranspose(glm::inverseTranspose(transform))
+        invTranspose(glm::transpose(glm::inverse(transform)))
     {}
 };
 

@@ -120,6 +120,7 @@ __host__ __device__ float triangleIntersectionTest(Geom triangle,
 {
     // TOOD: barycentrics or whatever
     // get vertices, normals, and stuff
+    return 0.f;
 }
 
 // sub-process of computeIntersections in pathtrace.cu
