@@ -104,7 +104,7 @@ struct Triangle : Geom
         glm::vec3 _v2,
         glm::vec3 _v3)
         : Geom(TRIANGLE),
-        hasUVs(false)
+        hasUVs(false),
           v1(_v1),
           v2(_v2),
           v3(_v3)

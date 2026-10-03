@@ -375,8 +375,6 @@ void Scene::loadFromOBJ(const std::string& filenameOBJ, const std::string& filen
     // populate a vertex, normal and uv buffer for triangles
     populateBuffers(attrib, vertices, uvs);
 
-    printf("size of vertices buffer %d, uvs, %d", vertices.size(), uvs.size());
-
     // populate the geoms buffer with Triangle structs, per object in the scene
     for (auto shape = shapes.begin(); shape < shapes.end(); shape++)
         load_triangles(*shape, vertices, uvs);

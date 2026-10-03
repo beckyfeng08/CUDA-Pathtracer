@@ -134,7 +134,7 @@ __host__ __device__ float triangleIntersectionTest(Geom triangle,
     int& hit_geom_index
 )
 {
-    float t;
+    float t = -1;
     float t_min = FLT_MAX;
     glm::vec3 tmp_intersect;
     glm::vec3 tmp_normal;
