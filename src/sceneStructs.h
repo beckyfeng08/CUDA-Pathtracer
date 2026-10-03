@@ -63,6 +63,7 @@ struct Triangle : Geom
 {
     glm::vec3 v1, v2, v3;
     glm::vec3 normal;
+    bool hasUVs;
     glm::vec2 uv1, uv2, uv3;
     glm::vec3 centroid;
 
@@ -87,7 +88,26 @@ struct Triangle : Geom
           v3(_v3),
           uv1(_uv1),
           uv2(_uv2),
-          uv3(_uv3)
+          uv3(_uv3),
+          hasUVs(true)
+    {
+        centroid = (v1 + v2 + v3) / 3.f;
+
+        bbox.minCorner = glm::min(v1, glm::min(v2, v3));
+        bbox.maxCorner = glm::max(v1, glm::max(v2, v3));
+
+        normal = glm::cross(v2 - v1, v3 - v1);
+    }
+
+    Triangle(
+        glm::vec3 _v1,
+        glm::vec3 _v2,
+        glm::vec3 _v3)
+        : Geom(TRIANGLE),
+        hasUVs(false)
+          v1(_v1),
+          v2(_v2),
+          v3(_v3)
     {
         centroid = (v1 + v2 + v3) / 3.f;
 

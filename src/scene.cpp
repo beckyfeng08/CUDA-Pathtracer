@@ -304,17 +304,20 @@ void Scene::load_triangles(const tinyobj::shape_t& shape,
         glm::vec3 v2 = vertices[vidx2];
         glm::vec3 v3 = vertices[vidx3];
 
+        Triangle t = Triangle(v1, v2, v3);
+
          // uvs
-        int uvidx1 = indices[3 * faceidx].texcoord_index;
-        int uvidx2 = indices[3 * faceidx + 1].texcoord_index;
-        int uvidx3 = indices[3 * faceidx + 2].texcoord_index;
+        if (uvs.size() > 0) { // no uvs in scene
+            int uvidx1 = indices[3 * faceidx].texcoord_index;
+            int uvidx2 = indices[3 * faceidx + 1].texcoord_index;
+            int uvidx3 = indices[3 * faceidx + 2].texcoord_index;
 
-        glm::vec2 uv1 = uvs[uvidx1];
-        glm::vec2 uv2 = uvs[uvidx2];
-        glm::vec2 uv3 = uvs[uvidx3];
-
-        Triangle t = Triangle(v1, v2, v3, uv1, uv2, uv3);
-
+            t.uv1 = uvs[uvidx1];
+            t.uv2 = uvs[uvidx2];
+            t.uv3 = uvs[uvidx3];
+            t.hasUVs = true;
+        }
+        
         // material
         if (mat_ids[faceidx] != -1) // else it is 0 by default
             t.materialid = mat_ids[faceidx];
