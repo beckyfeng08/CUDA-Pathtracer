@@ -3,7 +3,6 @@
 #include <cuda_runtime.h>
 
 #include "glm/glm.hpp"
-#include "utilities.h"
 
 #include <string>
 #include <vector>
@@ -51,12 +50,13 @@ struct Geom
           materialid(0),
           translation(0.f),
           rotation(0.f),
-          scale(1.f),
-          transform(utilityCore::buildTransformationMatrix(
-              translation, rotation, scale)),
-          inverseTransform(glm::inverse(transform)),
-        invTranspose(glm::transpose(glm::inverse(transform)))
-    {}
+          scale(1.f)
+    {
+        transform = utilityCore::buildTransformationMatrix(
+              translation, rotation, scale);
+        inverseTransform = glm::inverse(transform);
+        invTranspose = glm::transpose(glm::inverse(transform));
+    }
 };
 
 struct Triangle : Geom

@@ -169,6 +169,41 @@ __host__ __device__ float triangleIntersectionTest(Geom triangle,
     return t_min;
 }
 
+__host__ __device__ float areaLightIntersectionTest(
+    Light light,
+    Ray r,
+    glm::vec3 &intersectionPoint,
+    glm::vec3 &normal,
+    bool &outside)
+{
+    float ndotl = glm::dot(light.normal, r.direction);
+    // light faces in other direction
+    if (ndotl >= 0)
+        return -1.f;
+
+    // some point on the light, x local coord transformed onto light
+    glm::vec3 P0 = light.transform * glm::vec4(0.f, 0.f, 0.f, 1.f);
+    float t = glm::dot(P0 - r.origin, light.normal) / ndotl;
+
+    if (t < 0.f) return -1.f;
+
+    // check to see if t falls within the bounds of the plane
+    glm::vec3 pointOnPlane_w = r.origin + t * r.direction;
+    
+    // transform to local coords
+    glm::vec3 pointOnPlane_l = glm::vec3(light.inverseTransform * glm::vec4(pointOnPlane_w, 1.f));
+    if (pointOnPlane_l.x < -0.5 || pointOnPlane_l.x > 0.5 ||
+        pointOnPlane_l.z < -0.5 || pointOnPlane_l.z > 0.5)
+    {
+        // falls outside of bounds of plane
+        return -1.f;
+    }
+    intersectionPoint = pointOnPlane_w;
+    normal = light.normal;
+    outside = true;
+    return t;
+}
+
 __host__ __device__ float lightIntersectionTest(
     Light* lights,
     int lights_size,
@@ -188,17 +223,7 @@ __host__ __device__ float lightIntersectionTest(
             Light& light = lights[i];
             if (light.type == AREALIGHT)
             {
-                // use a cube as a dummy to represent the light for intersection
-                Geom placeholdersquare = Geom(CUBE);
-                placeholdersquare.materialid = 0;
-                placeholdersquare.translation = light.translation;
-                placeholdersquare.rotation = light.rotation;
-                placeholdersquare.scale = light.scale;
-                placeholdersquare.transform = light.transform;
-                placeholdersquare.inverseTransform = light.inverseTransform;
-                placeholdersquare.invTranspose = light.invTranspose;
-
-                t = boxIntersectionTest(placeholdersquare, r, tmp_intersect, tmp_normal, outside);
+                t = areaLightIntersectionTest(light, r, tmp_intersect, tmp_normal, outside);
             }
 
             if (t > 0.0f && t_min > t)

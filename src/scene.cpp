@@ -306,8 +306,8 @@ void Scene::load_triangles(const tinyobj::shape_t& shape,
 
         Triangle t = Triangle(v1, v2, v3);
 
-         // uvs
-        if (uvs.size() > 0) { // no uvs in scene
+        // uvs
+        if (uvs.size() > 0) { 
             int uvidx1 = indices[3 * faceidx].texcoord_index;
             int uvidx2 = indices[3 * faceidx + 1].texcoord_index;
             int uvidx3 = indices[3 * faceidx + 2].texcoord_index;
@@ -322,6 +322,7 @@ void Scene::load_triangles(const tinyobj::shape_t& shape,
         if (mat_ids[faceidx] != -1) // else it is 0 by default
             t.materialid = mat_ids[faceidx];
         
+            
         geoms.push_back(t);
     }
 }
@@ -374,6 +375,8 @@ void Scene::loadFromOBJ(const std::string& filenameOBJ, const std::string& filen
 
     // populate a vertex, normal and uv buffer for triangles
     populateBuffers(attrib, vertices, uvs);
+
+    printf("size of vertices buffer %d, uvs, %d", vertices.size(), uvs.size());
 
     // populate the geoms buffer with Triangle structs, per object in the scene
     for (auto shape = shapes.begin(); shape < shapes.end(); shape++)
