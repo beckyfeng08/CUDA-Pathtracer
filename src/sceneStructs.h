@@ -76,7 +76,7 @@ struct Geom
     Geom(glm::vec3 _v1,
         glm::vec3 _v2,
         glm::vec3 _v3):
-         Geom(TRIANGLE),
+         type(TRIANGLE),
           v1(_v1),
           v2(_v2),
           v3(_v3),

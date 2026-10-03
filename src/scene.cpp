@@ -93,6 +93,7 @@ void Scene::set_up_default_lights(glm::vec3 color)
     default_area_light.inverseTransform = glm::inverse(default_area_light.transform);
     default_area_light.invTranspose = glm::inverseTranspose(default_area_light.transform);
     default_area_light.normal = glm::normalize(glm::vec3(default_area_light.transform[1]));
+    lights.push_back(default_area_light);
 
 
     Light default_point_light;
@@ -111,7 +112,6 @@ void Scene::set_up_default_lights(glm::vec3 color)
     default_point_light.invTranspose = glm::inverseTranspose(default_point_light.transform);
     default_point_light.normal = glm::normalize(glm::vec3(default_point_light.transform[1]));
 
-    lights.push_back(default_area_light);
     lights.push_back(default_point_light);
 }
 
@@ -383,7 +383,7 @@ void Scene::loadFromOBJ(const std::string& filenameOBJ, const std::string& filen
     
     // hardcoded lights and camera in scene
 
-    set_up_default_lights(glm::vec3(0.95, 0.9, 0.7));
+    set_up_default_lights(glm::vec3(0.95, 0.4, 0.2));
 
     set_up_camera_default(800, 800, 45.f, 5000, 8, filenameOBJ, 
                                 glm::vec3(0.f, 5.f, 10.5),

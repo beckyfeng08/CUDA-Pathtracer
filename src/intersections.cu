@@ -186,7 +186,7 @@ __host__ __device__ float triangleIntersectionTest(Geom tri,
             t = sphereIntersectionTest(geom, r, tmp_intersect, tmp_normal, outside);
         } else if (geom.type == TRIANGLE) 
         {
-            t = triangleIntersectionTest(triangle, r, tmp_intersect, tmp_normal, outside);
+            t = triangleIntersectionTest(geom, r, tmp_intersect, tmp_normal, outside);
         }
         // TODO: add more intersection tests here... triangle? metaball? CSG?
 
