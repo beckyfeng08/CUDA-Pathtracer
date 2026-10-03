@@ -86,7 +86,7 @@ void Scene::set_up_default_lights(glm::vec3 color)
 
     default_area_light.translation = glm::vec3(0.0, 9.99, 0.0);
     default_area_light.rotation = glm::vec3(180.0, 0.0, 0.0);
-    default_area_light.scale = glm::vec3(1.f);
+    default_area_light.scale = glm::vec3(3.f, 0.01f, 3.f);
 
     default_area_light.transform = utilityCore::buildTransformationMatrix(
         default_area_light.translation, default_area_light.rotation, default_area_light.scale);
@@ -190,8 +190,6 @@ void Scene::loadFromJSON(const std::string& jsonName)
         newLight.invTranspose = glm::inverseTranspose(newLight.transform);
         newLight.normal = glm::normalize(glm::vec3(newLight.transform[1]));
         lights.push_back(newLight);
-
-
     }
 
     const auto& objectsData = data["Objects"];
@@ -264,7 +262,9 @@ void Scene::load_materials(std::vector<tinyobj::material_t> objmaterials)
         materials.emplace_back(mat);
     }
 }
-void Scene::populateBuffers(const tinyobj::attrib_t& attrib)
+void Scene::populateBuffers(const tinyobj::attrib_t& attrib, 
+    std::vector<glm::vec3>& vertices, 
+    std::vector<glm::vec2>& uvs)
 {
 
     for (int i = 0; i < attrib.vertices.size(); i+= 3)
@@ -273,13 +273,6 @@ void Scene::populateBuffers(const tinyobj::attrib_t& attrib)
         float v2 = attrib.vertices[i + 1];
         float v3 = attrib.vertices[i + 2];
         vertices.push_back(glm::vec3(v1, v2, v3));
-    }
-    for (int i = 0; i < attrib.normals.size(); i+= 3)
-    {
-        float n1 = attrib.normals[i];
-        float n2 = attrib.normals[i + 1];
-        float n3 = attrib.normals[i + 2];
-        normals.push_back(glm::vec3(n1, n2, n3));
     }
     
     for (int i = 0; i < attrib.texcoords.size(); i += 2)
@@ -291,7 +284,9 @@ void Scene::populateBuffers(const tinyobj::attrib_t& attrib)
 
 }
 
-void Scene::load_triangles(const tinyobj::shape_t& shape)
+void Scene::load_triangles(const tinyobj::shape_t& shape, 
+    const std::vector<glm::vec3>& vertices,
+    const std::vector<glm::vec3>& uvs)
 {
     const vector<tinyobj::index_t> & indices = shape.mesh.indices;
     const vector<int> & mat_ids = shape.mesh.material_ids;
@@ -299,35 +294,31 @@ void Scene::load_triangles(const tinyobj::shape_t& shape)
     // populate with face data
     for (size_t faceidx = 0; faceidx < mat_ids.size(); faceidx++)
     {
-        int v1 = indices[3 * faceidx].vertex_index;
-        int v2 = indices[3 * faceidx + 1].vertex_index;
-        int v3 = indices[3 * faceidx + 2].vertex_index;
 
-        int n1 = indices[3 * faceidx].normal_index;
-        int n2 = indices[3 * faceidx + 1].normal_index;
-        int n3 = indices[3 * faceidx + 2].normal_index;
+        //vertex positions
+        int vidx1 = indices[3 * faceidx].vertex_index;
+        int vidx2 = indices[3 * faceidx + 1].vertex_index;
+        int vidx3 = indices[3 * faceidx + 2].vertex_index;
 
-        int uv1 = indices[3 * faceidx].texcoord_index;
-        int uv2 = indices[3 * faceidx + 1].texcoord_index;
-        int uv3 = indices[3 * faceidx + 2].texcoord_index;
+        glm::vec3 v1 = vertices[vidx1];
+        glm::vec3 v2 = vertices[vidx2];
+        glm::vec3 v3 = vertices[vidx3];
 
-        Triangle t = Triangle(v1, v2, v3, n1, n2, n3, uv1, uv2, uv3);
+         // uvs
+        int uvidx1 = indices[3 * faceidx].texcoord_index;
+        int uvidx2 = indices[3 * faceidx + 1].texcoord_index;
+        int uvidx3 = indices[3 * faceidx + 2].texcoord_index;
 
-        if (mat_ids[faceidx] == -1)
-        {
-            // TODO:just give it the default material we have rn, hardcoded, FIX LATER
-            t.materialid = 0;
-        }
+        glm::vec2 uv1 = uvs[uvidx1];
+        glm::vec2 uv2 = uvs[uvidx2];
+        glm::vec2 uv3 = uvs[uvidx3];
 
-        // triangle does not need these attributes but just to populate empty data with something
-        t.translation = glm::vec3(0.f);
-        t.rotation = glm::vec3(0.f);
-        t.scale = glm::vec3(1.f);
-        t.transform = utilityCore::buildTransformationMatrix(
-            t.translation, t.rotation, t.scale);
-        t.inverseTransform = glm::inverse(t.transform);
-        t.invTranspose = glm::inverseTranspose(t.transform);
+        Triangle t = Triangle(v1, v2, v3, uv1, uv2, uv3);
 
+        // material
+        if (mat_ids[faceidx] != -1) // else it is 0 by default
+            t.materialid = mat_ids[faceidx];
+        
         geoms.push_back(t);
     }
 }
@@ -375,8 +366,11 @@ void Scene::loadFromOBJ(const std::string& filenameOBJ, const std::string& filen
 
     load_materials(objmaterials);
 
+    std::vector<glm::vec3> vertices;
+    std::vector<glm::vec2> uvs;
+
     // populate a vertex, normal and uv buffer for triangles
-    populateBuffers(attrib);
+    populateBuffers(attrib, vertices, uvs);
 
     // populate the geoms buffer with Triangle structs, per object in the scene
     for (auto shape = shapes.begin(); shape < shapes.end(); shape++)

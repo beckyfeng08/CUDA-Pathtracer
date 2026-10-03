@@ -33,10 +33,5 @@ public:
     std::vector<Material> materials;
     std::vector<Light> lights;
 
-    // for triangles
-    std::vector<glm::vec3> vertices;
-    std::vector<glm::vec3> normals;
-    std::vector<glm::vec2> uvs;
-
     RenderState state;
 };

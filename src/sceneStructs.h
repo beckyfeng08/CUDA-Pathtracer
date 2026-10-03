@@ -3,6 +3,7 @@
 #include <cuda_runtime.h>
 
 #include "glm/glm.hpp"
+#include "utilities.h"
 
 #include <string>
 #include <vector>
@@ -35,42 +36,66 @@ struct Geom
 {
     enum GeomType type;
     int materialid;
+
     glm::vec3 translation;
     glm::vec3 rotation;
     glm::vec3 scale;
+
     glm::mat4 transform;
     glm::mat4 inverseTransform;
     glm::mat4 invTranspose;
+
     __host__ __device__
-    Geom(GeomType type) : type(type) {}
+    Geom(GeomType type)
+        : type(type),
+          materialid(0),
+          translation(0.f),
+          rotation(0.f),
+          scale(1.f),
+          transform(utilityCore::buildTransformationMatrix(
+              translation, rotation, scale)),
+          inverseTransform(glm::inverse(transform)),
+          invTranspose(glm::inverseTranspose(transform))
+    {}
 };
 
 struct Triangle : Geom
 {
-    // the ints are indices to scene.vertices, scene.normals, and scene.uvs
-     Triangle() : Geom(TRIANGLE) {}
-     Triangle(int v1,
-         int v2,
-         int v3,
-         int n1,
-         int n2,
-         int n3,
-         int uv1,
-         int uv2,
-         int uv3
-         ) : Geom(TRIANGLE),
-         v1(v1), v2(v2), v3(v3), 
-         n1(n1), n2(n2), n3(n3), 
-         uv1(uv1), uv2(uv2), uv3(uv3)
-     {}
+    glm::vec3 v1, v2, v3;
+    glm::vec3 normal;
+    glm::vec2 uv1, uv2, uv3;
+    glm::vec3 centroid;
 
-    // vertices
-    int v1, v2, v3,
-    // normals
-    n1, n2, n3,
-    // uvs if need be
-    uv1, uv2, uv3;
+    struct {
+        glm::vec3 minCorner;
+        glm::vec3 maxCorner;
+    } bbox;
 
+    Triangle() : Geom(TRIANGLE)
+    {}
+
+    Triangle(
+        glm::vec3 _v1,
+        glm::vec3 _v2,
+        glm::vec3 _v3,
+        glm::vec2 _uv1,
+        glm::vec2 _uv2,
+        glm::vec2 _uv3)
+        : Geom(TRIANGLE),
+          v1(_v1),
+          v2(_v2),
+          v3(_v3),
+          uv1(_uv1),
+          uv2(_uv2),
+          uv3(_uv3)
+    {
+        centroid = (v1 + v2 + v3) / 3.f;
+
+        bbox.minCorner = glm::min(v1, glm::min(v2, v3));
+        bbox.maxCorner = glm::max(v1, glm::max(v2, v3));
+
+        normal = glm::cross(v2 - v1, v3 - v1);
+    }
 };
 
 struct Material

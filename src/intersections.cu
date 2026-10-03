@@ -112,6 +112,16 @@ __host__ __device__ float sphereIntersectionTest(
     return glm::length(r.origin - intersectionPoint);
 }
 
+__host__ __device__ float triangleIntersectionTest(Geom triangle,
+    Ray r,
+    glm::vec3 &intersectionPoint,
+    glm::vec3 &normal,
+    bool &outside)
+{
+    // TOOD: barycentrics or whatever
+    // get vertices, normals, and stuff
+}
+
 // sub-process of computeIntersections in pathtrace.cu
  __host__ __device__ float geometryIntersectionTest(
     Geom* geoms,
@@ -127,6 +137,7 @@ __host__ __device__ float sphereIntersectionTest(
     float t_min = FLT_MAX;
     glm::vec3 tmp_intersect;
     glm::vec3 tmp_normal;
+    // TODO: BVH
     for (int i = 0; i < geoms_size; i++)
     {
         Geom& geom = geoms[i];
@@ -138,6 +149,9 @@ __host__ __device__ float sphereIntersectionTest(
         else if (geom.type == SPHERE)
         {
             t = sphereIntersectionTest(geom, r, tmp_intersect, tmp_normal, outside);
+        } else if (geom.type == TRIANGLE) 
+        {
+            t = triangleIntersectionTest(geom, r, tmp_intersect, tmp_normal, outside);
         }
         // TODO: add more intersection tests here... triangle? metaball? CSG?
 
