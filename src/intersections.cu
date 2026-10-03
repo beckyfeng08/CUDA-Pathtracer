@@ -112,7 +112,7 @@ __host__ __device__ float sphereIntersectionTest(
     return glm::length(r.origin - intersectionPoint);
 }
 
-__host__ __device__ float triangleIntersectionTest(Triangle tri,
+__host__ __device__ float triangleIntersectionTest(Geom tri,
     Ray r,
     glm::vec3 &intersectionPoint,
     glm::vec3 &normal,
@@ -186,8 +186,6 @@ __host__ __device__ float triangleIntersectionTest(Triangle tri,
             t = sphereIntersectionTest(geom, r, tmp_intersect, tmp_normal, outside);
         } else if (geom.type == TRIANGLE) 
         {
-            Triangle& triangle = static_cast<Triangle&>(geom);
-
             t = triangleIntersectionTest(triangle, r, tmp_intersect, tmp_normal, outside);
         }
         // TODO: add more intersection tests here... triangle? metaball? CSG?
