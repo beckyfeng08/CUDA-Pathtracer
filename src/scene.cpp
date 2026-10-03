@@ -95,6 +95,22 @@ void Scene::set_up_default_lights(glm::vec3 color)
     default_area_light.normal = glm::normalize(glm::vec3(default_area_light.transform[1]));
     lights.push_back(default_area_light);
 
+    Light default_area_light2;
+    default_area_light2.type = AREALIGHT;
+    default_area_light2.color = glm::vec3(1.0, 1.0, 1.0);
+    default_area_light2.intensity = 10;
+
+    default_area_light2.translation = glm::vec3(6.0, 1.99, 0.0);
+    default_area_light2.rotation = glm::vec3(90.0, 0.0, 90.0);
+    default_area_light2.scale = glm::vec3(3.f, 0.01f, 3.f);
+
+    default_area_light2.transform = utilityCore::buildTransformationMatrix(
+        default_area_light2.translation, default_area_light2.rotation, default_area_light2.scale);
+    default_area_light2.inverseTransform = glm::inverse(default_area_light2.transform);
+    default_area_light2.invTranspose = glm::inverseTranspose(default_area_light2.transform);
+    default_area_light2.normal = glm::normalize(glm::vec3(default_area_light2.transform[1]));
+    lights.push_back(default_area_light2);
+
 
     Light default_point_light;
     default_point_light.type = POINTLIGHT;
@@ -252,6 +268,8 @@ void Scene::load_materials(std::vector<tinyobj::material_t> objmaterials)
         // make diffuse the default material
         glm::vec3 color(1.0, 1.0, 1.0);
         Material mat = { color, 0, 0, 0, 0, 0 }; // hardcode vals, just do diffuse color for now
+        //Material mat = { color, 0, 0, 1.f, 1.4, 0 }; // TODO: fix the hardcode vals, test for dielectric
+
         materials.emplace_back(mat);
     }
 
@@ -259,6 +277,8 @@ void Scene::load_materials(std::vector<tinyobj::material_t> objmaterials)
     {
         glm::vec3 color = glm::vec3((*objmat).diffuse[0], (*objmat).diffuse[1], (*objmat).diffuse[2]);
         Material mat = {color, 0, 0, 0, 0, 0}; // TODO: fix the hardcode vals, we just do diffuse color for now
+        //Material mat = { color, 0, 0, 1.f, 1.4, 0 }; // TODO: fix the hardcode vals, test for dielectric
+
         materials.emplace_back(mat);
     }
 }
