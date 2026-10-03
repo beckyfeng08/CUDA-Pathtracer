@@ -112,47 +112,46 @@ __host__ __device__ float sphereIntersectionTest(
     return glm::length(r.origin - intersectionPoint);
 }
 
-__host__ __device__ float triangleIntersectionTest(Geom triangle,
+__host__ __device__ float triangleIntersectionTest(Triangle tri,
     Ray r,
     glm::vec3 &intersectionPoint,
     glm::vec3 &normal,
     bool &outside)
 {
     // ray plane intersection
-    float ndotr = (r.direction, triangle.normal);
-    
+    float ndotr = glm::dot(r.direction, tri.normal);
     // it is parallel to the plane
     if (glm::abs(ndotr) < EPSILON) return -1.f;
 
-    float t = glm::dot(triangle.v1 - r.origin, triangle.normal) / ndotr;
+    float t = glm::dot(tri.v1 - r.origin, tri.normal) / ndotr;
     if (t < 0.f) return -1.f;
 
-    // check if point is within triangle bounds
+    // check if point is within tri bounds
     glm::vec3 pointOnPlane_w = r.origin + t * r.direction;
 
     // check edge v1 -> v2
-    glm::vec3 v1p = pointOnPlane_w - triangle.v1;
-    glm::vec3 v1v2 = triangle.v2 - triangle.v1;
-    c = glm::cross(v1v2, v1p);
+    glm::vec3 v1p = pointOnPlane_w - tri.v1;
+    glm::vec3 v1v2 = tri.v2 - tri.v1;
+    glm::vec3 c = glm::cross(v1v2, v1p);
 
-    if (glm::dot(triangle.normal, c) < 0.f) return -1;
+    if (glm::dot(tri.normal, c) < 0.f) return -1;
 
     // check edge v2 -> v3
-    glm::vec3 v2p = pointOnPlane_w - triangle.v2;
-    glm::vec3 v2v3 = triangle.v3 - triangle.v2;
+    glm::vec3 v2p = pointOnPlane_w - tri.v2;
+    glm::vec3 v2v3 = tri.v3 - tri.v2;
     c = glm::cross(v2v3, v2p);
 
-    if (glm::dot(triangle.normal, c) < 0.f) return -1.f;
+    if (glm::dot(tri.normal, c) < 0.f) return -1.f;
 
     // check edge v3-> v1
-    glm::vec3 v3p = pointOnPlane_w - triangle.v3;
-    glm::vec3 v3v1 = triangle.v1 - triangle.v3;
-    glm::vec3 c = glm::cross(v3v1, v3p);
+    glm::vec3 v3p = pointOnPlane_w - tri.v3;
+    glm::vec3 v3v1 = tri.v1 - tri.v3;
+    c = glm::cross(v3v1, v3p);
 
-    if (glm::dot(triangle.normal, c) < 0.f) return -1.f;
+    if (glm::dot(tri.normal, c) < 0.f) return -1.f;
 
     intersectionPoint = pointOnPlane_w;
-    normal = triangle.normal;
+    normal = tri.normal;
     outside = ndotr < 0;
 
     return t;
@@ -187,7 +186,9 @@ __host__ __device__ float triangleIntersectionTest(Geom triangle,
             t = sphereIntersectionTest(geom, r, tmp_intersect, tmp_normal, outside);
         } else if (geom.type == TRIANGLE) 
         {
-            t = triangleIntersectionTest(geom, r, tmp_intersect, tmp_normal, outside);
+            Triangle& triangle = static_cast<Triangle&>(geom);
+
+            t = triangleIntersectionTest(triangle, r, tmp_intersect, tmp_normal, outside);
         }
         // TODO: add more intersection tests here... triangle? metaball? CSG?
 

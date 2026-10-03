@@ -321,8 +321,7 @@ void Scene::load_triangles(const tinyobj::shape_t& shape,
         // material
         if (mat_ids[faceidx] != -1) // else it is 0 by default
             t.materialid = mat_ids[faceidx];
-        
-            
+      
         geoms.push_back(t);
     }
 }
