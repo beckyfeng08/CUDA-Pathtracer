@@ -165,8 +165,8 @@ __host__ __device__ float bboxIntersectionTest(const BVHBounds bbox, const Ray r
     glm::vec3 invDir = glm::vec3(1.f /(r.direction.x + EPSILON), 
                                 1.f / (r.direction.y  + EPSILON), 
                                 1.f /(r.direction.z + EPSILON)) ;
-    glm::vec3 near = (minCorner - r.origin) * invDir;
-    glm::vec3 far  = (maxCorner - r.origin) * invDir;
+    glm::vec3 near = (bbox.minCorner - r.origin) * invDir;
+    glm::vec3 far  = (bbox.maxCorner - r.origin) * invDir;
 
     glm::vec3 tmin = glm::min(near, far);
     glm::vec3 tmax = glm::max(near, far);
@@ -217,8 +217,8 @@ __host__ __device__ float bvhNodeIntersectionTest(
     {
         // check is there is any overlap shared by the two boxes (like a triangle hogging both boxes)
         bool overlap = false;
-        glm::vec3 l_r = child_L->bbox.maxCorner - child_R->bbox.minCorner;
-        glm::vec3 r_l = child_R->bbox.maxCorner - child_L->bbox.minCorner;
+        glm::vec3 l_r = lnode.bbox.maxCorner - rnode.bbox.minCorner;
+        glm::vec3 r_l = rnode.bbox.maxCorner - lnode.bbox.minCorner;
 
         for (int i = 0; i < 3; i++) {
             if ( l_r[i] > 0 || r_l[i] > 0) {
@@ -228,8 +228,8 @@ __host__ __device__ float bvhNodeIntersectionTest(
 
         if (overlap)
         {
-            glm::vec3 rightIntersectPoint, leftIntersectPoint, 
-                    rnormal, lnormal,
+            glm::vec3 rightIntersectPoint, leftIntersectPoint,
+                rnormal, lnormal;
             bool routside, loutside;
 
             t_l = bvhNodeIntersectionTest(

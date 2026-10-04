@@ -87,7 +87,7 @@ __host__ __device__ float triangleIntersectionTest(const Geom tri,
     bool &outside);
 
     // tests intersection of the ray and the bounding box.
-__host__ __device__ float bboxIntersectionTest(const BVHBounds bbox, const Ray r)
+__host__ __device__ float bboxIntersectionTest(const BVHBounds bbox, const Ray r);
     /**
  * Test intersection between a ray and the bvh node, ultimately returns teh intersection of the target primitive (if there is any).
  *

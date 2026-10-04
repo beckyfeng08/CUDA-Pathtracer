@@ -260,7 +260,7 @@ __host__ __device__ glm::vec3 sampleDirectLighting(
             glm::vec3 normal;
             glm::vec3 intersectionPoint;
             bool outside = false;
-            float t = geometryIntersectionTest(
+            float t = geometryIntersectionTest( // TODO: put bvh nodes here too
                     geoms,
                     geoms_size,
                     ray,
