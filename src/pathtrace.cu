@@ -84,8 +84,8 @@ static Material* dev_materials = NULL;
 static Light* dev_lights = NULL;
 static PathSegment* dev_paths = NULL;
 static ShadeableIntersection* dev_intersections = NULL;
-// TODO: static variables for device memory, any extra info you need, etc
-// ...
+static BVHNode* dev_bvhnodes = NULL;
+
 
 void InitDataContainer(GuiDataContainer* imGuiData)
 {
@@ -116,8 +116,8 @@ void pathtraceInit(Scene* scene)
     cudaMalloc(&dev_intersections, pixelcount * sizeof(ShadeableIntersection));
     cudaMemset(dev_intersections, 0, pixelcount * sizeof(ShadeableIntersection));
 
-    // TODO: initialize any extra device memeory you need
-
+    cudaMalloc(&dev_bvhnodes, scene->nodes * sizeof(BVHNode));
+    cudaMemset(dev_bvhnodes, 0, scene->nodes * sizeof(BVHNode));
 
     checkCUDAError("pathtraceInit");
 }
@@ -130,7 +130,7 @@ void pathtraceFree()
     cudaFree(dev_materials);
     cudaFree(dev_intersections);
     cudaFree(dev_lights);
-    // TODO: clean up any extra device memory you created
+    cudaFree(dev_bvhnodes);
 
     checkCUDAError("pathtraceFree");
 }
@@ -184,6 +184,8 @@ __global__ void computeIntersections(
     int geoms_size,
     Light* lights,
     int lights_size,
+    BVHNode* bvhnodes,
+    int bvhnodes_size,
     ShadeableIntersection* intersections)
 {
     int path_index = blockIdx.x * blockDim.x + threadIdx.x;
@@ -203,7 +205,9 @@ __global__ void computeIntersections(
         // naive parse through sgeoms
         t_min = geometryIntersectionTest(
             geoms, 
-            geoms_size, 
+            geoms_size,
+            bvhnodes,
+            bvhnodes_size,
             pathSegment.ray, 
             intersect_point,
             normal,
@@ -411,6 +415,8 @@ void pathtrace(uchar4* pbo, int frame, int iter)
             hst_scene->geoms.size(),
             dev_lights,
             hst_scene->lights.size(),
+            dev_bvhnodes,
+            hst_scene->nodes.size(),
             dev_intersections
         );
         // dev_intersections should now be populated

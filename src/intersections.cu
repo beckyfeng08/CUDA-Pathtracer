@@ -1,5 +1,7 @@
 #include "intersections.h"
+#include "sceneStructs.h"
 
+#define USE_BVH 1
 __host__ __device__ float boxIntersectionTest(
     Geom box,
     Ray r,
@@ -112,8 +114,8 @@ __host__ __device__ float sphereIntersectionTest(
     return glm::length(r.origin - intersectionPoint);
 }
 
-__host__ __device__ float triangleIntersectionTest(Geom tri,
-    Ray r,
+__host__ __device__ float triangleIntersectionTest(const Geom tri,
+    const Ray r,
     glm::vec3 &intersectionPoint,
     glm::vec3 &normal,
     bool &outside)
@@ -157,10 +159,202 @@ __host__ __device__ float triangleIntersectionTest(Geom tri,
     return t;
 }
 
+__host__ __device__ float bboxIntersectionTest(const BVHBounds bbox, const Ray r)
+{
+    
+    glm::vec3 invDir = glm::vec3(1.f /(r.direction.x + EPSILON), 
+                                1.f / (r.direction.y  + EPSILON), 
+                                1.f /(r.direction.z + EPSILON)) ;
+    glm::vec3 near = (minCorner - r.origin) * invDir;
+    glm::vec3 far  = (maxCorner - r.origin) * invDir;
+
+    glm::vec3 tmin = glm::min(near, far);
+    glm::vec3 tmax = glm::max(near, far);
+
+    float t0 = glm::max(glm::max(tmin.x, tmin.y), tmin.z);
+    float t1 = glm::min(glm::min(tmax.x, tmax.y), tmax.z);
+
+    // box is behind ray or slabs don't overlap
+    if(t0 > t1 || t1 <= 0.f) 
+        return -1.f;
+    if(t0 > 0.f) // We're outside the box looking at it
+        return t0;
+
+    return t1; // we are inside the box looking at it
+}
+
+__host__ __device__ float bvhNodeIntersectionTest(
+    const int bvhnodeIdx, 
+    const BVHNode* bvhnodes,
+    const Geom* geoms,
+    const Ray r,
+    glm::vec3 &intersectionPoint,
+    glm::vec3 &normal,
+    bool &outside)
+{
+    float t = -1.f;
+    const BVHNode node = bvhnodes[bvhnodeIdx];
+
+    // see if the ray misses the bbox
+    if (bboxIntersectionTest(node.bbox, r)) 
+        return -1.f;
+
+    // base case: test intersection with the triangle
+    if (node.isLeaf) {
+        Geom thetriangle = geoms[node.shapeidx];
+        return triangleIntersectionTest(thetriangle, r, intersectionPoint, normal, outside);
+    }
+    // recursive case
+    const int leftIdx = node.child_L;
+    const int rightIdx = node.child_R;
+    const BVHNode& lnode = bvhnodes[leftIdx];
+    const BVHNode& rnode = bvhnodes[rightIdx];
+    
+    float t_l = bboxIntersectionTest(lnode.bbox, r);
+    float t_r = bboxIntersectionTest(rnode.bbox, r);
+
+    if (t_l > 0.f && t_r > 0.f) // both boxes are intersected by the ray
+    {
+        // check is there is any overlap shared by the two boxes (like a triangle hogging both boxes)
+        bool overlap = false;
+        glm::vec3 l_r = child_L->bbox.maxCorner - child_R->bbox.minCorner;
+        glm::vec3 r_l = child_R->bbox.maxCorner - child_L->bbox.minCorner;
+
+        for (int i = 0; i < 3; i++) {
+            if ( l_r[i] > 0 || r_l[i] > 0) {
+                overlap = true;
+            }
+        }
+
+        if (overlap)
+        {
+            glm::vec3 rightIntersectPoint, leftIntersectPoint, 
+                    rnormal, lnormal,
+            bool routside, loutside;
+
+            t_l = bvhNodeIntersectionTest(
+                leftIdx, 
+                bvhnodes,
+                geoms,
+                r,
+                leftIntersectPoint,
+                lnormal,
+                loutside);
+            t_r = bvhNodeIntersectionTest(
+                rightIdx, 
+                bvhnodes,
+                geoms,
+                r,
+                leftIntersectPoint,
+                rnormal,
+                routside);
+
+            bool leftIntersectionCond = (t_l != -1 && t_r != -1 && t_l < t_r) // both l and r have intersections but t is closer
+                || (t_l != -1 && t_r == -1); // l has an intersection but not r
+            bool rightIntersectionCond = (t_l != -1 && t_r != -1 && t_r <= t_l) // both l and r have an intersection but r is closer than l
+                || (t_l == -1 && t_r != -1); // r has an intersection but not l
+
+            
+            if (leftIntersectionCond)
+            {
+                intersectionPoint = leftIntersectPoint;
+                normal = lnormal;
+                outside = loutside;
+                t = t_l;
+            } 
+            else if (rightIntersectionCond)
+            {
+                intersectionPoint = rightIntersectPoint;
+                normal = rnormal;
+                outside = routside;
+                t = t_r;
+            }
+
+        }
+        else // no overlap between the bounding volumes
+        {
+            // we want to intersect the closest child first. If we don't find an intersection with that child, then try interscting the other child
+            if (t_l < t_r)
+            {
+                t = bvhNodeIntersectionTest(
+                        leftIdx, 
+                        bvhnodes,
+                        geoms,
+                        r,
+                        intersectionPoint,
+                        normal,
+                        outside);
+                // if there is no intersection, try the other node
+                if (t == -1)
+                {
+                    t = bvhNodeIntersectionTest(
+                        rightIdx, 
+                        bvhnodes,
+                        geoms,
+                        r,
+                        intersectionPoint,
+                        normal,
+                        outside);
+                }
+            }
+            else 
+            {
+                t = bvhNodeIntersectionTest(
+                        rightIdx, 
+                        bvhnodes,
+                        geoms,
+                        r,
+                        intersectionPoint,
+                        normal,
+                        outside);
+                // if there is no intersection, try the other node
+                if (t == -1)
+                {
+                    t = bvhNodeIntersectionTest(
+                        leftIdx, 
+                        bvhnodes,
+                        geoms,
+                        r,
+                        intersectionPoint,
+                        normal,
+                        outside);
+                }
+            }
+        }
+    } else if (t_l > 0.f && t_r <= 0.f) // only left box intersected
+    {
+        t = bvhNodeIntersectionTest(
+                        leftIdx, 
+                        bvhnodes,
+                        geoms,
+                        r,
+                        intersectionPoint,
+                        normal,
+                        outside);
+
+    } 
+    else if (t_l <= 0.f && t_r > 0.f) // only right box intersected
+    {
+        t = bvhNodeIntersectionTest(
+                        rightIdx, 
+                        bvhnodes,
+                        geoms,
+                        r,
+                        intersectionPoint,
+                        normal,
+                        outside);
+    }
+    return t;
+
+}
+
+
 // sub-process of computeIntersections in pathtrace.cu
  __host__ __device__ float geometryIntersectionTest(
     Geom* geoms,
     int geoms_size,
+    BVHNode* bvhnodes,
+    int bvhnodes_size,
     Ray r,
     glm::vec3& intersectionPoint,
     glm::vec3& normal,
@@ -172,31 +366,38 @@ __host__ __device__ float triangleIntersectionTest(Geom tri,
     float t_min = FLT_MAX;
     glm::vec3 tmp_intersect;
     glm::vec3 tmp_normal;
-    // TODO: BVH
-    for (int i = 0; i < geoms_size; i++)
+    // TODO: BVH (fix logic here)
+    if (USE_BVH && bvhnodes_size > 0)
     {
-        Geom& geom = geoms[i];
+        int rootIndex = 0;
+        // with t, check for intersection of the ray with the boudning volume
+        t = bvhNodeIntersectionTest(0, bvhnodes, geoms, r, tmp_intersect, tmp_normal, outside);
+    } else {
+        for (int i = 0; i < geoms_size; i++)
+        {
+            Geom& geom = geoms[i];
 
-        if (geom.type == CUBE)
-        {
-            t = boxIntersectionTest(geom, r, tmp_intersect, tmp_normal, outside);
-        }
-        else if (geom.type == SPHERE)
-        {
-            t = sphereIntersectionTest(geom, r, tmp_intersect, tmp_normal, outside);
-        } else if (geom.type == TRIANGLE) 
-        {
-            t = triangleIntersectionTest(geom, r, tmp_intersect, tmp_normal, outside);
-        }
+            if (geom.type == CUBE)
+            {
+                t = boxIntersectionTest(geom, r, tmp_intersect, tmp_normal, outside);
+            }
+            else if (geom.type == SPHERE)
+            {
+                t = sphereIntersectionTest(geom, r, tmp_intersect, tmp_normal, outside);
+            } else if (geom.type == TRIANGLE) 
+            {
+                t = triangleIntersectionTest(geom, r, tmp_intersect, tmp_normal, outside);
+            }
 
-        // Compute the minimum t from the intersection tests to determine what
-        // scene geometry object was hit first.
-        if (t > 0.0f && t_min > t)
-        {
-            t_min = t;
-            hit_geom_index = i;
-            intersectionPoint = tmp_intersect;
-            normal = tmp_normal;
+            // Compute the minimum t from the intersection tests to determine what
+            // scene geometry object was hit first.
+            if (t > 0.0f && t_min > t)
+            {
+                t_min = t;
+                hit_geom_index = i;
+                intersectionPoint = tmp_intersect;
+                normal = tmp_normal;
+            }
         }
     }
     return t_min;
