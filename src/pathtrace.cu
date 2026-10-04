@@ -209,6 +209,7 @@ __global__ void computeIntersections(
         hit_geom_index
     );
 
+
     glm::vec3 light_point(0.f);
     glm::vec3 light_normal(0.f);
     int hit_light_index = -1;
@@ -279,10 +280,17 @@ __global__ void shadeMaterial(
         pathSegment.remainingBounces = 0;
         return;
     }
-    Material material = materials[intersection.materialId];
-    Light light = lights[intersection.lightId];
+
+   
     // If we actually hit a light, light the ray
     if (intersection.isLight) {
+        if (intersection.lightId < 0 || intersection.lightId >= lights_size) {
+            printf("Invalid light ID: %d, path: %d\n", intersection.lightId, idx);
+            pathSegment.remainingBounces = 0;
+            return;
+        }
+        Light light = lights[intersection.lightId];
+
         glm::vec3 contribution = light.color * light.intensity;
 
         if (light.type == AREALIGHT) {
@@ -295,6 +303,13 @@ __global__ void shadeMaterial(
         
         return;
     }
+
+    if (intersection.materialId < 0) {
+        printf("Invalid material ID: %d, path: %d\n", intersection.materialId, idx);
+        pathSegment.remainingBounces = 0;
+        return;
+    }
+    Material material = materials[intersection.materialId];
 
     // If the material indicates that the object was a light, "light" the ray
     if (material.emittance > 0.0f) {
@@ -428,7 +443,9 @@ void pathtrace(uchar4* pbo, int frame, int iter)
         );
         // dev_intersections should now be populated
         checkCUDAError("trace one bounce");
+        cudaGetLastError();
         cudaDeviceSynchronize();
+
         depth++;
         printf("trace one bounce");
 

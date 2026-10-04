@@ -80,14 +80,14 @@ __host__ __device__ float sphereIntersectionTest(
  * @param outside            Output param for whether the ray came from outside.
  * @return                   Ray parameter `t` value. -1 if no intersection.
  */
-__host__ __device__ float triangleIntersectionTest(const Geom tri,
-    const Ray r,
+__host__ __device__ float triangleIntersectionTest(Geom tri,
+    Ray r,
     glm::vec3 &intersectionPoint,
     glm::vec3 &normal,
     bool &outside);
 
     // tests intersection of the ray and the bounding box.
-__host__ __device__ float bboxIntersectionTest(const BVHBounds bbox, const Ray r);
+__host__ __device__ float bboxIntersectionTest(BVHBounds bbox, Ray r);
     /**
  * Test intersection between a ray and the bvh node, ultimately returns teh intersection of the target primitive (if there is any).
  *
@@ -99,10 +99,12 @@ __host__ __device__ float bboxIntersectionTest(const BVHBounds bbox, const Ray r
  * @return                   Ray parameter `t` value. -1 if no intersection.
  */
 __host__ __device__ float bvhNodeIntersectionTest(
-    const int bvhnodeIdx, 
-    const BVHNode* bvhnodes,
-    const Geom* geoms,
-    const Ray r,
+    int bvhnodeIdx, 
+    BVHNode* bvhnodes,
+    int bvhnodes_size,
+
+    Geom* geoms,
+    Ray r,
     glm::vec3 &intersectionPoint,
     glm::vec3 &normal,
     bool &outside,
