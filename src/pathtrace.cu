@@ -113,11 +113,12 @@ void pathtraceInit(Scene* scene)
     cudaMalloc(&dev_lights, scene->lights.size() * sizeof(Light));
     cudaMemcpy(dev_lights, scene->lights.data(), scene->lights.size() * sizeof(Light), cudaMemcpyHostToDevice);
 
+    cudaMalloc(&dev_bvhnodes, scene->nodes.size() * sizeof(BVHNode));
+    cudaMemcpy(dev_bvhnodes, scene->nodes.data(), scene->nodes.size() * sizeof(BVHNode), cudaMemcpyHostToDevice);
+
     cudaMalloc(&dev_intersections, pixelcount * sizeof(ShadeableIntersection));
     cudaMemset(dev_intersections, 0, pixelcount * sizeof(ShadeableIntersection));
 
-    cudaMalloc(&dev_bvhnodes, scene->nodes * sizeof(BVHNode));
-    cudaMemset(dev_bvhnodes, 0, scene->nodes * sizeof(BVHNode));
 
     checkCUDAError("pathtraceInit");
 }

@@ -372,6 +372,14 @@ __host__ __device__ float bvhNodeIntersectionTest(
         int rootIndex = 0;
         // with t, check for intersection of the ray with the boudning volume
         t = bvhNodeIntersectionTest(0, bvhnodes, geoms, r, tmp_intersect, tmp_normal, outside);
+        if (t > 0.0f && t_min > t) 
+        {
+                t_min = t;
+                hit_geom_index = i;
+                intersectionPoint = tmp_intersect;
+                normal = tmp_normal;
+            
+        }
     } else {
         for (int i = 0; i < geoms_size; i++)
         {
