@@ -421,15 +421,17 @@ void Scene::loadFromOBJ(const std::string& filenameOBJ, const std::string& filen
 
 
 void Scene::buildBVH() {
-    std::vector<Triangle*> tris;
+    std::vector<Geom*> tris;
     for(auto& g : geoms) {
-        if (geoms.type == TRIANGLE)
+        if (g.type == TRIANGLE)
             tris.push_back(&g);
     }
     int numLeafNodes = 0;
     bvhRootIdx = recursiveBVHBuild(tris, 0, tris.size(), &numLeafNodes);
     std::cout << "Number of triangles in mesh: " << tris.size() << std::endl;
     std::cout << "Number of leaf nodes: " << numLeafNodes << std::endl;
+    // print out nodes to make sure
+
 }
 
 BVHBounds Scene::Union(const BVHBounds& a, const BVHBounds &b) {
@@ -449,7 +451,7 @@ int Scene::recursiveBVHBuild(std::vector<Geom*> &triangles, int start, int end, 
     if (end - start == 1)
     {
         Geom* tri = triangles[start];
-        nodes[nodeIdx].shapeIndex = tri->index;
+        nodes[nodeIdx].shapeidx = start;
         nodes[nodeIdx].bbox = tri->bbox;
         nodes[nodeIdx].isLeaf = true;
 
@@ -462,7 +464,7 @@ int Scene::recursiveBVHBuild(std::vector<Geom*> &triangles, int start, int end, 
     // build up our current bounding box
     for (int i = start; i < end; i++)
     {
-        currentLayerBounds = Union(triangle[i]->bbox, currentLayerBounds);
+        currentLayerBounds = Union(triangles[i]->bbox, currentLayerBounds);
     }    
     // find longest axis to split on
     glm::vec3 extent = currentLayerBounds.maxCorner - currentLayerBounds.minCorner;
@@ -490,7 +492,7 @@ int Scene::recursiveBVHBuild(std::vector<Geom*> &triangles, int start, int end, 
     // build up our current node
     nodes[nodeIdx].child_L = childLidx;
     nodes[nodeIdx].child_R = childRidx;
-    nodes[nodeIndex].bbox = currentLayerBounds;
+    nodes[nodeIdx].bbox = currentLayerBounds;
     nodes[nodeIdx].isLeaf = false;
 
     return nodeIdx;

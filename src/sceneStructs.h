@@ -32,13 +32,15 @@ struct Ray
 
 struct BVHBounds
 {
-    BVHBounds(glm::vec3 mincorner, glm::Vec3 maxcorner): 
+    BVHBounds() {}
+    BVHBounds(glm::vec3 mincorner, glm::vec3 maxcorner) :
         minCorner(mincorner),
-        maxCorner(maxcorner) 
-    {}
+        maxCorner(maxcorner)
+    {
+    }
     glm::vec3 minCorner;
     glm::vec3 maxCorner;
-}
+};
 
 struct Geom
 {
@@ -92,6 +94,8 @@ struct Geom
         centroid = (v1 + v2 + v3) / 3.f;
 
         normal = glm::cross(v2 - v1, v3 - v1);
+        bbox = BVHBounds(glm::min(v1, glm::min(v2, v3)),
+            glm::max(v1, glm::max(v2, v3)));
 
         transform = utilityCore::buildTransformationMatrix(
               translation, rotation, scale);
