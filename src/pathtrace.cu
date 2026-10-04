@@ -260,6 +260,8 @@ __global__ void shadeMaterial(
     Material* materials,
     Geom* geoms,
     int geoms_size,
+    BVHNode* bvhnodes,
+    int bvhnodes_size,
     Light* lights,
     int lights_size)
 {
@@ -316,6 +318,8 @@ __global__ void shadeMaterial(
         material,
         geoms,
         geoms_size,
+        bvhnodes,
+        bvhnodes_size,
         lights,
         lights_size,
         rng
@@ -442,6 +446,8 @@ void pathtrace(uchar4* pbo, int frame, int iter)
             dev_materials,
             dev_geoms,
             hst_scene->geoms.size(),
+            dev_bvhnodes,
+            hst_scene->nodes.size(),
             dev_lights,
             hst_scene->lights.size()
         );

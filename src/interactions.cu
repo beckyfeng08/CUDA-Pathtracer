@@ -176,6 +176,8 @@ __host__ __device__ glm::vec3 sampleDirectLighting(
     glm::vec3 normal,
     Geom* geoms,
     int geoms_size,
+    BVHNode* bvhnodes,
+    int bvhnodes_size,
     Light* l,
     int lights_size,
     thrust::default_random_engine& rng
@@ -211,9 +213,11 @@ __host__ __device__ glm::vec3 sampleDirectLighting(
             glm::vec3 normal;
             glm::vec3 intersectionPoint;
             bool outside = false;
-            float t = geometryIntersectionTest(
+            float t = geometryIntersectionTest( // TODO: put bvh nodes here too
                 geoms,
                 geoms_size,
+                bvhnodes,
+                bvhnodes_size,
                 ray,
                 intersectionPoint,
                 normal,
@@ -263,6 +267,8 @@ __host__ __device__ glm::vec3 sampleDirectLighting(
             float t = geometryIntersectionTest( // TODO: put bvh nodes here too
                     geoms,
                     geoms_size,
+                    bvhnodes,
+                    bvhnodes_size,
                     ray,
                     intersectionPoint,
                     normal,
@@ -290,6 +296,8 @@ __host__ __device__ void scatterRay(
     const Material& m,
     Geom* geoms,
     int geoms_size,
+    BVHNode* bvhnodes,
+    int bvhnodes_size,
     Light* l,
     int lights_size,
     thrust::default_random_engine& rng)
@@ -324,6 +332,8 @@ __host__ __device__ void scatterRay(
             normal,
             geoms,
             geoms_size,
+            bvhnodes,
+            bvhnodes_size,
             l,
             lights_size,
             rng

@@ -32,7 +32,7 @@ __host__ __device__ glm::vec3 samplePerfectSpecularReflection(
     glm::vec3 intersect,
     glm::vec3 normal,
     const Material &m);
-    
+
 /**
  * Sample a pure transmitted material (with refractions and whatever)
  */
@@ -69,6 +69,8 @@ __host__ __device__ glm::vec3 sampleDirectLighting(
     glm::vec3 normal,
     Geom* geoms,
     int geoms_size,
+    BVHNode* bvhnodes,
+    int bvhnodes_size,
     Light* l,
     int lights_size,
     thrust::default_random_engine& rng
