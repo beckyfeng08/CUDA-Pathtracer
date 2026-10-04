@@ -73,6 +73,38 @@ __host__ __device__ float sphereIntersectionTest(
     bool& outside);
 
 /**
+ * Test intersection between a ray and a triangle in the scene. 
+ *
+ * @param intersectionPoint  Output parameter for point of intersection.
+ * @param normal             Output parameter for surface normal.
+ * @param outside            Output param for whether the ray came from outside.
+ * @return                   Ray parameter `t` value. -1 if no intersection.
+ */
+__host__ __device__ float triangleIntersectionTest(const Geom tri,
+    const Ray r,
+    glm::vec3 &intersectionPoint,
+    glm::vec3 &normal,
+    bool &outside);
+
+    // tests intersection of the ray and the bounding box.
+__host__ __device__ float bboxIntersectionTest(const BVHBounds bbox, const Ray r)
+    /**
+ * Test intersection between a ray and the bvh node, ultimately returns teh intersection of the target primitive (if there is any).
+ *
+* @param intersectionPoint  Output parameter for point of intersection.
+ * @param normal             Output parameter for surface normal.
+ * @param outside            Output param for whether the ray came from outside.
+ * @return                   Ray parameter `t` value. -1 if no intersection.
+ */
+__host__ __device__ float bvhNodeIntersectionTest(
+    const int bvhnodeIdx, 
+    const BVHNode* bvhnodes,
+    const Geom* geoms,
+    const Ray r,
+    glm::vec3 &intersectionPoint,
+    glm::vec3 &normal,
+    bool &outside);
+/**
  * Handles all geometry intersection, calls intersection tests for sphere and box and triangles or whatever
  *
 * @param intersectionPoint  Output parameter for point of intersection.
@@ -84,12 +116,28 @@ __host__ __device__ float sphereIntersectionTest(
  __host__ __device__ float geometryIntersectionTest(
     Geom* geoms,
     int geoms_size,
+    BVHNode* bvhnodes,
+    int bvhnodes_size,
     Ray r,
     glm::vec3& intersectionPoint,
     glm::vec3& normal,
     bool& outside,
     int& hit_geom_index
 );
+
+/**
+ * checks if we intersect a plane which is the area light
+ * @param intersectionPoint  Output parameter for point of intersection.
+ * @param normal             Output parameter for surface normal.
+ * @param outside            Output param for whether the ray came from outside (or behind the light).
+ * @return                   Ray parameter `t` value. -1 if no intersection.
+ * */
+__host__ __device__ float areaLightIntersectionTest(
+    Light light,
+    Ray r,
+    glm::vec3 &intersectionPoint,
+    glm::vec3 &normal,
+    bool &outside);
 
 /**
  * Handles all light intersection, which is just area light at this point in time

@@ -169,7 +169,7 @@ __host__ __device__ glm::vec3 sampleDielectric(
     return resulting_color;
 }
 
-// TODO: place here or in pathtrace??
+// TODO: clean up any vars not used in the code?
 __host__ __device__ glm::vec3 sampleDirectLighting(
     PathSegment& pathSegment,
     glm::vec3 intersect,
