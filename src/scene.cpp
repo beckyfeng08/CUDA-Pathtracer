@@ -25,11 +25,15 @@ Scene::Scene(string filename)
     if (ext == ".json")
     {
         loadFromJSON(filename);
+        buildBVH(); 
+
         return;
     }
     else if (ext == ".obj")
     {
         loadFromOBJ(filename, "");
+        // put the triangles in a bvh
+        buildBVH();
         return;
     }
     else
@@ -413,4 +417,81 @@ void Scene::loadFromOBJ(const std::string& filenameOBJ, const std::string& filen
     //required for display: set up render camera stuff
     set_up_render_cam(state.camera, this->state);
     printf("number of triangles in the scene: %d", geoms.size());
+}
+
+
+void Scene::buildBVH() {
+    std::vector<Triangle*> tris;
+    for(auto& g : geoms) {
+        if (geoms.type == TRIANGLE)
+            tris.push_back(&g);
+    }
+    int numLeafNodes = 0;
+    bvhRootIdx = recursiveBVHBuild(tris, 0, tris.size(), &numLeafNodes);
+    std::cout << "Number of triangles in mesh: " << tris.size() << std::endl;
+    std::cout << "Number of leaf nodes: " << numLeafNodes << std::endl;
+}
+
+BVHBounds Scene::Union(const BVHBounds& a, const BVHBounds &b) {
+    glm::vec3 maxvec = glm::max(a.maxCorner, b.maxCorner);
+    glm::vec3 minvec = glm::min(a.minCorner, b.minCorner);
+
+    BVHBounds ab = BVHBounds(minvec, maxvec);
+    return ab;
+}
+
+int Scene::recursiveBVHBuild(std::vector<Geom*> &triangles, int start, int end, int* numLeafNodes)
+{
+    int nodeIdx = static_cast<int>(nodes.size());
+    nodes.emplace_back();
+
+    // theres only one triangle to consider, so build a leaf node
+    if (end - start == 1)
+    {
+        Geom* tri = triangles[start];
+        nodes[nodeIdx].shapeIndex = tri->index;
+        nodes[nodeIdx].bbox = tri->bbox;
+        nodes[nodeIdx].isLeaf = true;
+
+        (*numLeafNodes)++;
+        return nodeIdx;
+    }
+    // recursive case
+    BVHBounds currentLayerBounds(glm::vec3(FLT_MAX),  glm::vec3(-FLT_MAX));
+
+    // build up our current bounding box
+    for (int i = start; i < end; i++)
+    {
+        currentLayerBounds = Union(triangle[i]->bbox, currentLayerBounds);
+    }    
+    // find longest axis to split on
+    glm::vec3 extent = currentLayerBounds.maxCorner - currentLayerBounds.minCorner;
+
+    int splitAxis = 0;
+    if (extent.y > extent.x && extent.y > extent.z)
+        splitAxis = 1;
+    else if (extent.z > extent.x && extent.z > extent.y)
+        splitAxis = 2;
+    
+    int midIdx = (start + end) / 2;
+
+    // choose a median split point (along longest axis)
+    std::nth_element(triangles.begin() + start,
+                    triangles.begin() + midIdx,
+                    triangles.begin() + end,
+                    [splitAxis](const Geom *a, const Geom *b) {
+                             return a->centroid[splitAxis] < b->centroid[splitAxis];
+                            }
+                    );
+    //recurse
+    int childLidx = recursiveBVHBuild(triangles, start, midIdx, numLeafNodes);
+    int childRidx = recursiveBVHBuild(triangles, midIdx, end, numLeafNodes);
+
+    // build up our current node
+    nodes[nodeIdx].child_L = childLidx;
+    nodes[nodeIdx].child_R = childRidx;
+    nodes[nodeIndex].bbox = currentLayerBounds;
+    nodes[nodeIdx].isLeaf = false;
+
+    return nodeIdx;
 }

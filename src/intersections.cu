@@ -188,7 +188,6 @@ __host__ __device__ float triangleIntersectionTest(Geom tri,
         {
             t = triangleIntersectionTest(geom, r, tmp_intersect, tmp_normal, outside);
         }
-        // TODO: add more intersection tests here... triangle? metaball? CSG?
 
         // Compute the minimum t from the intersection tests to determine what
         // scene geometry object was hit first.

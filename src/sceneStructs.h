@@ -30,7 +30,15 @@ struct Ray
     glm::vec3 direction;
 };
 
-
+struct BVHBounds
+{
+    BVHBounds(glm::vec3 mincorner, glm::Vec3 maxcorner): 
+        minCorner(mincorner),
+        maxCorner(maxcorner) 
+    {}
+    glm::vec3 minCorner;
+    glm::vec3 maxCorner;
+}
 
 struct Geom
 {
@@ -51,11 +59,7 @@ struct Geom
     bool hasUVs;
     glm::vec2 uv1, uv2, uv3;
     glm::vec3 centroid;
-
-    struct {
-        glm::vec3 minCorner;
-        glm::vec3 maxCorner;
-    } bbox;
+    BVHBounds bbox;
 
     __host__ __device__
     Geom(GeomType type)
@@ -87,9 +91,6 @@ struct Geom
         {
         centroid = (v1 + v2 + v3) / 3.f;
 
-        bbox.minCorner = glm::min(v1, glm::min(v2, v3));
-        bbox.maxCorner = glm::max(v1, glm::max(v2, v3));
-
         normal = glm::cross(v2 - v1, v3 - v1);
 
         transform = utilityCore::buildTransformationMatrix(
@@ -98,9 +99,18 @@ struct Geom
         invTranspose = glm::transpose(glm::inverse(transform));
         // if there are uvs be sure to manually do something for them
     };
-
-
 };
+
+struct BVHNode
+{
+    BVHBounds bbox;
+    int child_L;
+    int child_R;
+    int shapeidx; // holds a triangle in it if it is leaf
+    bool isLeaf;
+};
+
+
 
 struct Material
 {
