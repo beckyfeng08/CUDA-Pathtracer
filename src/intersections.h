@@ -94,6 +94,8 @@ __host__ __device__ float bboxIntersectionTest(const BVHBounds bbox, const Ray r
 * @param intersectionPoint  Output parameter for point of intersection.
  * @param normal             Output parameter for surface normal.
  * @param outside            Output param for whether the ray came from outside.
+ *  @param geomIdx            Output param for the index of the geometry we intersect
+
  * @return                   Ray parameter `t` value. -1 if no intersection.
  */
 __host__ __device__ float bvhNodeIntersectionTest(
@@ -103,7 +105,8 @@ __host__ __device__ float bvhNodeIntersectionTest(
     const Ray r,
     glm::vec3 &intersectionPoint,
     glm::vec3 &normal,
-    bool &outside);
+    bool &outside,
+    int& geomIdx);
 /**
  * Handles all geometry intersection, calls intersection tests for sphere and box and triangles or whatever
  *
