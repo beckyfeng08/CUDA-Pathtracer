@@ -379,35 +379,39 @@ __host__ __device__ float bvhNodeIntersectionTest(
     float t_min = FLT_MAX;
     glm::vec3 tmp_intersect;
     glm::vec3 tmp_normal;
+    bool tmp_outside = false;
+
     // TODO: BVH (fix logic here)
     if (USE_BVH && bvhnodes_size > 0)
     {
-        int rootIndex = 0;
         int tmp_geom_index = -1;
         // with t, check for intersection of the ray with the boudning volume
-        t = bvhNodeIntersectionTest(0, bvhnodes, geoms, r, tmp_intersect, tmp_normal, outside, tmp_geom_index);
+        t = bvhNodeIntersectionTest(0, bvhnodes, geoms, r, tmp_intersect, tmp_normal, tmp_outside, tmp_geom_index);
         if (t > 0.0f && t_min > t) 
         {
                 t_min = t;
                 hit_geom_index = tmp_geom_index;
                 intersectionPoint = tmp_intersect;
                 normal = tmp_normal;
+                outside = tmp_outside;
         }
-    } else {
+    } 
+    else
+    {
         for (int i = 0; i < geoms_size; i++)
         {
             Geom& geom = geoms[i];
 
             if (geom.type == CUBE)
             {
-                t = boxIntersectionTest(geom, r, tmp_intersect, tmp_normal, outside);
+                t = boxIntersectionTest(geom, r, tmp_intersect, tmp_normal, tmp_outside);
             }
             else if (geom.type == SPHERE)
             {
-                t = sphereIntersectionTest(geom, r, tmp_intersect, tmp_normal, outside);
+                t = sphereIntersectionTest(geom, r, tmp_intersect, tmp_normal, tmp_outside);
             } else if (geom.type == TRIANGLE) 
             {
-                t = triangleIntersectionTest(geom, r, tmp_intersect, tmp_normal, outside);
+                t = triangleIntersectionTest(geom, r, tmp_intersect, tmp_normal, tmp_outside);
             }
 
             // Compute the minimum t from the intersection tests to determine what
@@ -418,7 +422,7 @@ __host__ __device__ float bvhNodeIntersectionTest(
                 hit_geom_index = i;
                 intersectionPoint = tmp_intersect;
                 normal = tmp_normal;
-
+                outside = tmp_outside;
             }
         }
     }

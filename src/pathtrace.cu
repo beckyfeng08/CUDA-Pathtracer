@@ -173,10 +173,7 @@ __global__ void generateRayFromCamera(Camera cam, int iter, int traceDepth, Path
     }
 }
 
-// TODO:
-// computeIntersections handles generating ray intersections ONLY.
-// Generating new rays is handled in your shader(s).
-// Feel free to modify the code below.
+
 __global__ void computeIntersections(
     int depth,
     int num_paths,
@@ -190,66 +187,71 @@ __global__ void computeIntersections(
     ShadeableIntersection* intersections)
 {
     int path_index = blockIdx.x * blockDim.x + threadIdx.x;
+    if (path_index >= num_paths) return;
+  
+    PathSegment pathSegment = pathSegments[path_index];
 
-    if (path_index < num_paths)
+    glm::vec3 geom_point(0.f);
+    glm::vec3 geom_normal(0.f);
+    bool geom_outside = true;
+    int hit_geom_index = -1;
+
+    // naive parse through sgeoms
+    float t_geom = geometryIntersectionTest(
+        geoms,
+        geoms_size,
+        bvhnodes,
+        bvhnodes_size,
+        pathSegment.ray,
+        geom_point,
+        geom_normal,
+        geom_outside,
+        hit_geom_index
+    );
+
+    glm::vec3 light_point(0.f);
+    glm::vec3 light_normal(0.f);
+    int hit_light_index = -1;
+
+    float t_light = lightIntersectionTest(
+        lights,
+        lights_size,
+        pathSegment.ray,
+        light_point,
+        light_normal,
+        hit_light_index
+    );
+
+    bool geom_hit = hit_geom_index != -1 && t_geom > 0.f;
+    bool light_hit = hit_light_index != -1 && t_light > 0.f;
+
+    if (!geom_hit && !light_hit) // no intersection with anything
     {
-        PathSegment pathSegment = pathSegments[path_index];
-
-        float t;
-        glm::vec3 intersect_point;
-        glm::vec3 normal;
-        float t_min = FLT_MAX;
-        int hit_geom_index = -1;
-        int hit_light_index = -1;
-        bool outside = true;
-
-        // naive parse through sgeoms
-        t_min = geometryIntersectionTest(
-            geoms, 
-            geoms_size,
-            bvhnodes,
-            bvhnodes_size,
-            pathSegment.ray, 
-            intersect_point,
-            normal,
-            outside,
-            hit_geom_index
-        );
-
-        t = lightIntersectionTest(
-            lights,
-            lights_size,
-            pathSegment.ray, 
-            intersect_point,
-            normal,
-            hit_light_index
-        );
-
-        if (t < t_min)
-            t_min = t;
-
-
-        if (hit_geom_index == -1 && hit_light_index == -1) // no geometry was hit
-        {
-
-            intersections[path_index].t = -1.0f;
-        }
-        else if (hit_light_index != -1) // if we hit a light, then this should be updated, and be the first object the ray hits (updated t_min)
-        {
-            intersections[path_index].t = t_min;
-            intersections[path_index].isLight = 1;
-            intersections[path_index].lightId = hit_light_index;
-            intersections[path_index].surfaceNormal = normal;
-            intersections[path_index].materialId = -1; // no material id
-        } 
-        else if (hit_geom_index != -1 ) 
-        {
-            intersections[path_index].t = t_min;
-            intersections[path_index].materialId = geoms[hit_geom_index].materialid;
-            intersections[path_index].surfaceNormal = normal;
-            intersections[path_index].isLight = 0;
-        }
+        intersections[path_index].t = -1.f;
+        intersections[path_index].isLight = 0;
+        intersections[path_index].materialId = -1;
+        intersections[path_index].lightId = -1;
+        return;
     }
+
+    if (light_hit && (!geom_hit || t_light < t_geom)) // light hit but no geom, or light hits first
+    {
+        intersections[path_index].t = t_light;
+        intersections[path_index].isLight = 1;
+        intersections[path_index].lightId = hit_light_index;
+        intersections[path_index].materialId = -1;
+        intersections[path_index].surfaceNormal = light_normal;
+    }
+    else // geom hit
+    {
+        intersections[path_index].t = t_geom;
+        intersections[path_index].isLight = 0;
+        intersections[path_index].materialId =
+            geoms[hit_geom_index].materialid;
+        intersections[path_index].lightId = -1;
+        intersections[path_index].surfaceNormal = geom_normal;
+    }
+    
 }
 
 
