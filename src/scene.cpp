@@ -366,13 +366,28 @@ void Scene::load_triangles(const tinyobj::shape_t& shape,
     }
 }
 
-void Scene::loadFromOBJ(const std::string& filenameOBJ, const std::string& filenameMTL)
+void Scene::loadFromOBJ(const std::string& filenameOBJ)
 {
-    // load obj wrapper referenced from https://github.com/canmom/rasteriser/blob/master/fileloader.cpp
+    tinyobj::ObjReaderConfig reader_config;
+    reader_config.mtl_search_path = "./"; // Path to material files
 
-    tinyobj::attrib_t attrib;
-    std::vector<tinyobj::shape_t> shapes;
-    std::vector<tinyobj::material_t> objmaterials;
+    tinyobj::ObjReader reader;
+
+    if (!reader.ParseFromFile(inputfile, reader_config)) {
+    if (!reader.Error().empty()) {
+        std::cerr << "TinyObjReader: " << reader.Error();
+    }
+    exit(1);
+    }
+
+    if (!reader.Warning().empty()) {
+    std::cout << "TinyObjReader: " << reader.Warning();
+    }
+
+    auto& attrib = reader.GetAttrib();
+    auto& shapes = reader.GetShapes();
+    auto& objmaterials = reader.GetMaterials();
+
     std::string warn;
     std::string err;
     bool success;
