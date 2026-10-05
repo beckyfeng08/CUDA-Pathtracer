@@ -451,10 +451,9 @@ int Scene::recursiveBVHBuild(std::vector<Geom*> &triangles, int start, int end, 
     if (end - start == 1)
     {
         Geom* tri = triangles[start];
-        nodes[nodeIdx].shapeidx = start;
+        nodes[nodeIdx].shapeidx = static_cast<int>(tri - geoms.data()); // true index in geoms
         nodes[nodeIdx].bbox = tri->bbox;
         nodes[nodeIdx].isLeaf = true;
-
         (*numLeafNodes)++;
         return nodeIdx;
     }

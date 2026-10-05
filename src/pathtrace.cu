@@ -407,13 +407,11 @@ void pathtrace(uchar4* pbo, int frame, int iter)
 
     // 1D block for path tracing
     const int blockSize1d = 128;
-    printf("starting pathtracer");
 
     generateRayFromCamera<<<blocksPerGrid2d, blockSize2d>>>(cam, iter, traceDepth, dev_paths); // set ray origin and ray dir, in dev_paths (pathsegments)
     // multiple iterations?
 
     checkCUDAError("generate camera ray");
-    printf("successfully generated rays");
 
     int depth = 0;
     PathSegment* dev_path_end = dev_paths + pixelcount; // end of the array
@@ -447,7 +445,6 @@ void pathtrace(uchar4* pbo, int frame, int iter)
         cudaDeviceSynchronize();
 
         depth++;
-        printf("trace one bounce");
 
         // zip up with dev_paths, so the indices match
         auto dev_zipped = thrust::make_zip_iterator(thrust::make_tuple(dev_intersections, dev_paths));
@@ -474,13 +471,11 @@ void pathtrace(uchar4* pbo, int frame, int iter)
 
 
         checkCUDAError("Shading material");
-        printf("shade materials");
 
         // Stream compact away rays that don't intersect
         
         // copy color data to the image before we completely terminate the rays
         finalGather << <numblocksPathSegmentTracing, blockSize1d >> > (num_paths, dev_image, dev_paths);
-        printf("render to image");
         // terminate rays that have no more bounces
         dev_path_end = thrust::remove_if(thrust::device, dev_paths, dev_path_end, terminateRays());
         num_paths = dev_path_end - dev_paths;
@@ -505,5 +500,4 @@ void pathtrace(uchar4* pbo, int frame, int iter)
         pixelcount * sizeof(glm::vec3), cudaMemcpyDeviceToHost);
 
     checkCUDAError("pathtrace");
-    printf("one iter complete");
 }
