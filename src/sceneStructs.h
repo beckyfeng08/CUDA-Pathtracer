@@ -193,6 +193,7 @@ struct PathSegment
     glm::vec3 radiance;
     int pixelIndex;
     int remainingBounces;
+    int specularBounce;
 };
 
 // Use with a corresponding PathSegment to do:

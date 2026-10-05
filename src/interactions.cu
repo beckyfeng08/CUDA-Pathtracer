@@ -143,30 +143,34 @@ __host__ __device__ glm::vec3 sampleDirectLighting(
     thrust::default_random_engine& rng
 )
 {
+    if (lights_size == 0) return glm::vec3(0.f);
+
     glm::vec3 resulting_color = glm::vec3(1.f);
 
     thrust::uniform_real_distribution<float> u01(0, 1);
     int light_index = floor(u01(rng) * lights_size);
     Light light = l[light_index];
+    
 
     if (light.type == AREALIGHT) 
     {
-        glm::vec3 xy = glm::vec3(glm::mix(-0.5, 0.5, u01(rng)), 0.0,glm::mix(-0.5, 0.5, u01(rng))); // randomly sample a point in the arealight
+        glm::vec3 xy = glm::vec3(u01(rng) - 0.5, 0.0, u01(rng) - 0.5); // randomly sample a point in the arealight
 
         glm::vec3 rand_pt_light_w = glm::vec3(light.transform * glm::vec4(xy, 1.)); // take random point in local light, transform to world coordinate
 
-        glm::vec3 view_point = pathSegment.ray.origin;
+        glm::vec3 view_point = intersect;
         glm::vec3 wiW = glm::normalize(rand_pt_light_w - view_point);
 
         float cosTheta = glm::dot(light.normal, -wiW);
+        float cosThetaSurface = glm::dot(normal, wiW);
         // we are behind the light or our surface is facing away from the light
-        if (cosTheta <= 0. ) {
+        if (cosTheta <= 0. || cosThetaSurface <= 0.) {
             resulting_color = glm::vec3(0.f);
         }
         else
         {
             // check for occluders
-            Ray ray = {view_point, wiW};
+            Ray ray = {view_point + normal * EPSILON, wiW};
             int hit_geom_index = -1;
 
             // throwaway vars
@@ -188,25 +192,25 @@ __host__ __device__ glm::vec3 sampleDirectLighting(
             float r = glm::length(rand_pt_light_w - view_point);
 
             // we hit an occluder before reaching the light
-            if (hit_geom_index != -1 && t < r)
-            {
+            if (hit_geom_index != -1 && t < r && t > 0)
                 resulting_color = glm::vec3(0.);
-
-            } 
             else 
             {
                 float area = light.scale.x * light.scale.z; // area of arealight
 
-                float pdf_dA = 1.f / area;
-                float pdf = pdf_dA * r*r / cosTheta; // account for falloff, and angle
-                resulting_color = light.color * light.intensity / pdf;
+                // float pdf_dA = 1.f / area;
+                // float pdf = pdf_dA * r*r / cosTheta; // account for falloff, and angle
+                // resulting_color = light.color * light.intensity * light_size / pdf;
+                glm::vec3 le = light.color * light.intensity / area;
+                float pdfsolidangle = r * r / (cosThetaSurface * area);
+                resulting_color = le * cosTheta * lights_size / pdfsolidangle;
 
             }
         }
     }
     else if (light.type == POINTLIGHT) 
     {
-        glm::vec3 view_point = pathSegment.ray.origin;
+        glm::vec3 view_point = intersect;
 
         glm::vec3 wiW = glm::normalize(light.translation - view_point);
         float r = glm::length(light.translation - view_point);
@@ -272,7 +276,7 @@ __host__ __device__ void scatterRay(
             normal,
             m,
             rng);
-
+        pathSegment.specularBounce = 1;
         // Indirect
         pathSegment.color *= resulting_color;
 
@@ -285,6 +289,8 @@ __host__ __device__ void scatterRay(
             normal,
             m,
             rng);
+        pathSegment.specularBounce = 0;
+
 
         glm::vec3 resulting_color_direct = sampleDirectLighting(
             pathSegment,
