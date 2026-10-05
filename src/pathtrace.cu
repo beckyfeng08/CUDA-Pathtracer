@@ -170,6 +170,7 @@ __global__ void generateRayFromCamera(Camera cam, int iter, int traceDepth, Path
 
         segment.pixelIndex = index;
         segment.remainingBounces = traceDepth;
+        segment.specularBounce = 1;
     }
 }
 
@@ -294,13 +295,15 @@ __global__ void shadeMaterial(
         glm::vec3 contribution = light.color * light.intensity;
 
         if (light.type == AREALIGHT) {
-            // divide by the width and height
-            contribution /= (light.scale.x * light.scale.z); // the width and length components
+            contribution /= (light.scale.x * light.scale.z);
         }
-        
-        pathSegment.radiance += pathSegment.color * contribution;
+
+        // only count the light if direct lighting didn't already account for it
+        if (pathSegment.specularBounce) {   // camera ray or glass bounce
+            pathSegment.radiance += pathSegment.color * contribution;
+        }
+
         pathSegment.remainingBounces = 0;
-        
         return;
     }
 

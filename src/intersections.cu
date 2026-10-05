@@ -375,26 +375,27 @@ __host__ __device__ float lightIntersectionTest(
     int& hit_light_index
 )
 {
-    float t = -1;
     float t_min = FLT_MAX;
     glm::vec3 tmp_intersect;
     glm::vec3 tmp_normal;
     bool outside = false; // as a placeholder, this is just thrown away
     for (int i = 0; i < lights_size; i++)
-        {
-            Light& light = lights[i];
-            if (light.type == AREALIGHT)
-            {
-                t = areaLightIntersectionTest(light, r, tmp_intersect, tmp_normal, outside);
-            }
+    {
+        float t = -1;
 
-            if (t > 0.0f && t_min > t)
-            {
-                t_min = t;
-                hit_light_index = i;
-                intersectionPoint = tmp_intersect;
-                normal = tmp_normal;
-            }
+        Light& light = lights[i];
+        if (light.type == AREALIGHT)
+        {
+            t = areaLightIntersectionTest(light, r, tmp_intersect, tmp_normal, outside);
         }
+
+        if (t > 0.0f && t_min > t)
+        {
+            t_min = t;
+            hit_light_index = i;
+            intersectionPoint = tmp_intersect;
+            normal = tmp_normal;
+        }
+    }
     return t_min;
 }
