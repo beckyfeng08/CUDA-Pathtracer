@@ -108,8 +108,8 @@ struct Geom
         centroid = (v1 + v2 + v3) / 3.f;
 
         normal = glm::cross(v2 - v1, v3 - v1);
-        bbox = BVHBounds(glm::min(v1, glm::min(v2, v3)),
-            glm::max(v1, glm::max(v2, v3)));
+        bbox = BVHBounds(glm::min(v1, glm::min(v2, v3)) - glm::vec3(EPSILON),
+            glm::max(v1, glm::max(v2, v3)) + glm::vec3(EPSILON));
 
         transform = utilityCore::buildTransformationMatrix(
               translation, rotation, scale);

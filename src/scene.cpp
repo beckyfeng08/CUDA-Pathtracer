@@ -229,7 +229,7 @@ void Scene::loadFromJSON(const std::string& jsonName)
             const auto& col = p["RGB"];
             newMaterial.color = glm::vec3(col[0], col[1], col[2]);
             newMaterial.isDielectric = 1.0;
-            newMaterial.indexOfRefraction = 2.5; // TODO: change this later, if the json has something
+            newMaterial.indexOfRefraction = 1.4; // TODO: change this later, if the json has something
         }
         MatNameToID[name] = materials.size();
         materials.emplace_back(newMaterial);

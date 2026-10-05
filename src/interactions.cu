@@ -54,7 +54,7 @@ __host__ __device__ glm::vec3 sampleDiffuse(
     thrust::default_random_engine &rng)
 {
     pathSegment.ray.direction = calculateRandomDirectionInHemisphere(normal, rng);
-    pathSegment.ray.origin = intersect + pathSegment.ray.direction * EPSILON;
+    pathSegment.ray.origin = intersect + normal * EPSILON;
     return m.color;
 }
 
@@ -117,7 +117,7 @@ __host__ __device__ glm::vec3 sampleDielectric(
     glm::vec3 refracted = glm::refract(wi, n, eta);
     bool total_internal = glm::dot(refracted, refracted) < EPSILON;
 
-    if (u01(rng) < F)
+    if (u01(rng) < F || total_internal)
     {
         pathSegment.ray.direction = glm::reflect(wi, n);
         pathSegment.ray.origin = intersect + n * EPSILON;
@@ -125,9 +125,11 @@ __host__ __device__ glm::vec3 sampleDielectric(
     else
     {
         pathSegment.ray.direction = glm::normalize(refracted);
-        pathSegment.ray.origin = intersect - n * EPSILON; 
+        pathSegment.ray.origin = intersect - n * EPSILON * 10.f;
     }
     return m.color;
+
+
 }
 
 __host__ __device__ glm::vec3 sampleDirectLighting(
@@ -279,31 +281,18 @@ __host__ __device__ void scatterRay(
         pathSegment.specularBounce = 1;
         // Indirect
         pathSegment.color *= resulting_color;
-
     }
     else
     {
-        resulting_color = sampleDiffuse(
-            pathSegment,
-            intersect,
-            normal,
-            m,
-            rng);
+        glm::vec3 n = normal;
+        if (glm::dot(n, pathSegment.ray.direction) > 0.f) n = -n;
+
+        resulting_color = sampleDiffuse(pathSegment, intersect, n, m, rng);
         pathSegment.specularBounce = 0;
-
-
         glm::vec3 resulting_color_direct = sampleDirectLighting(
-            pathSegment,
-            intersect,
-            normal,
-            geoms,
-            geoms_size,
-            bvhnodes,
-            bvhnodes_size,
-            l,
-            lights_size,
-            rng
-        );
+            pathSegment, intersect, n, geoms, geoms_size,
+            bvhnodes, bvhnodes_size, l, lights_size, rng);
+
         // Direct lighting
         float pdf = PI;
 

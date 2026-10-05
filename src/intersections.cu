@@ -50,7 +50,8 @@ __host__ __device__ float boxIntersectionTest(
             tmin_n = tmax_n;
             outside = false;
         }
-        intersectionPoint = multiplyMV(box.transform, glm::vec4(getPointOnRay(q, tmin), 1.0f));
+        //intersectionPoint = multiplyMV(box.transform, glm::vec4(getPointOnRay(q, tmin), 1.0f));
+        intersectionPoint = multiplyMV(box.transform, glm::vec4(q.origin + tmin * q.direction, 1.0f));
         normal = glm::normalize(multiplyMV(box.invTranspose, glm::vec4(tmin_n, 0.0f)));
         return glm::length(r.origin - intersectionPoint);
     }
@@ -102,14 +103,11 @@ __host__ __device__ float sphereIntersectionTest(
         outside = false;
     }
 
-    glm::vec3 objspaceIntersection = getPointOnRay(rt, t);
-
+    //glm::vec3 objspaceIntersection = getPointOnRay(rt, t);
+    glm::vec3 objspaceIntersection = rt.origin + t * rt.direction;   // was getPointOnRay(rt, t)
     intersectionPoint = multiplyMV(sphere.transform, glm::vec4(objspaceIntersection, 1.f));
     normal = glm::normalize(multiplyMV(sphere.invTranspose, glm::vec4(objspaceIntersection, 0.f)));
-    if (!outside)
-    {
-        normal = -normal;
-    }
+
 
     return glm::length(r.origin - intersectionPoint);
 }
@@ -126,7 +124,7 @@ __host__ __device__ float triangleIntersectionTest(Geom tri,
     if (glm::abs(ndotr) < EPSILON) return -1.f;
 
     float t = glm::dot(tri.v1 - r.origin, tri.normal) / ndotr;
-    if (t < 0.f) return -1.f;
+    if (t < EPSILON) return -1.f;
 
     // check if point is within tri bounds
     glm::vec3 pointOnPlane_w = r.origin + t * r.direction;
@@ -194,10 +192,9 @@ __host__ __device__ float bvhNodeIntersectionTest(
     bool &outside,
     int& geomIdx)
 {
-    // TODO: do an array based in place situation
     float t_min = FLT_MAX;
     geomIdx = -1;
-    int stack[64]; // TODO: do it based on some non-hardcoded val?
+    int stack[64];
     stack[0] = bvhnodeIdx; // push the root node onto the stack
     int stackSize = 1; // currently has size 1
 
