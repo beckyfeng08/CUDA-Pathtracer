@@ -288,9 +288,9 @@ __host__ __device__ float bvhNodeIntersectionTest(
         for (int i = geoms_size - 1; i >= 0 && geoms[i].type != TRIANGLE; i--)
         {
             float t = -1.f;
-            if (geom.type == CUBE)
+            if (geoms[i].type == CUBE)
                 t = boxIntersectionTest(geoms[i], r, tmp_intersect, tmp_normal, tmp_outside);
-            else if (geom.type == SPHERE)
+            else if (geoms[i].type == SPHERE)
                 t = sphereIntersectionTest(geoms[i], r, tmp_intersect, tmp_normal, tmp_outside);
 
             if (t > 0.0f && t < t_min)

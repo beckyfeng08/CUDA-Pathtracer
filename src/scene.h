@@ -19,7 +19,7 @@ private:
         glm::vec3 camLookAt,
         glm::vec3 camUp
     );
-    void set_up_ground_plane(glm::vec3 color);
+    void set_up_cornell_box(float scale);
     void set_up_default_lights(glm::vec3 color);
     void set_up_render_cam(Camera& camera, RenderState& state);
     void populateBuffers(const tinyobj::attrib_t& attrib,
