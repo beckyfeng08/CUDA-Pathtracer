@@ -17,6 +17,9 @@
 using namespace std;
 using json = nlohmann::json;
 
+#define BVH_MAX_DEPTH 16
+#define BVH_MAX_LEAF_TRIS 4
+
 Scene::Scene(string filename)
 {
     cout << "Reading scene from " << filename << " ..." << endl;
@@ -33,7 +36,7 @@ Scene::Scene(string filename)
     {
         loadFromOBJ(filename, "");
         // put the triangles in a bvh
-        buildBVH();
+        buildBVH(); // maxdepth is 16
         return;
     }
     else
@@ -421,16 +424,24 @@ void Scene::loadFromOBJ(const std::string& filenameOBJ, const std::string& filen
 
 
 void Scene::buildBVH() {
+    nodes.clear();
     std::vector<Geom*> tris;
-    for(auto& g : geoms) {
-        if (g.type == TRIANGLE)
-            tris.push_back(&g);
-    }
+    for(auto& g : geoms) 
+        if (g.type == TRIANGLE) tris.push_back(&g);
+    
     int numLeafNodes = 0;
-    bvhRootIdx = recursiveBVHBuild(tris, 0, tris.size(), &numLeafNodes);
-    std::cout << "Number of triangles in mesh: " << tris.size() << std::endl;
+    bvhRootIdx = recursiveBVHBuild(tris, 0, tris.size(), 0, &numLeafNodes);
+
+    // reorder geoms so that position i == tris[i]
+    std::vector<Geom> reorderedGeoms;
+    reorderedGeoms.reserve(geoms.size());
+    for (Geom* t : tris) reorderedGeoms.push_back(*t);
+    for (auto& g : geoms)
+        if (g.type != TRIANGLE) reorderedGeoms.push_back(g); // push back non triangle data last
+    geoms = std::move(reordered);
+
+        std::cout << "Number of triangles in mesh: " << tris.size() << std::endl;
     std::cout << "Number of leaf nodes: " << numLeafNodes << std::endl;
-    // print out nodes to make sure
 
 }
 
@@ -442,29 +453,37 @@ BVHBounds Scene::Union(const BVHBounds& a, const BVHBounds &b) {
     return ab;
 }
 
-int Scene::recursiveBVHBuild(std::vector<Geom*> &triangles, int start, int end, int* numLeafNodes)
+// TODO: make a depth limit. need to implement start and end indices and test it
+
+int Scene::recursiveBVHBuild(std::vector<Geom*> &triangles, int start, int end, int depth, int* numLeafNodes)
 {
-    int nodeIdx = static_cast<int>(nodes.size());
+    int nodeIdx = (int)nodes.size();
     nodes.emplace_back();
 
-    // theres only one triangle to consider, so build a leaf node
-    if (end - start == 1)
-    {
-        Geom* tri = triangles[start];
-        nodes[nodeIdx].shapeidx = static_cast<int>(tri - geoms.data()); // true index in geoms
-        nodes[nodeIdx].bbox = tri->bbox;
-        nodes[nodeIdx].isLeaf = true;
-        (*numLeafNodes)++;
-        return nodeIdx;
-    }
-    // recursive case
     BVHBounds currentLayerBounds(glm::vec3(FLT_MAX),  glm::vec3(-FLT_MAX));
 
     // build up our current bounding box
     for (int i = start; i < end; i++)
-    {
         currentLayerBounds = Union(triangles[i]->bbox, currentLayerBounds);
-    }    
+    
+    // theres only one triangle to consider, or we reached maxdepth, so build a leaf node
+    int count = end - start;
+    if (count <= BVH_MAX_LEAF_TRIS || depth >= BVH_MAX_DEPTH)
+    {
+        nodes[nodeIdx].shapeidx = static_cast<int>(tri - geoms.data()); // true index in geoms
+        nodes[nodeIdx].isLeaf = true;
+        nodes[nodeIdx].tri_start = start;
+        nodes[nodeIdx].tri_count = count;
+        nodes[nodeIdx].bbox = currentLayerBounds;
+        nodes[nodeIdx].child_L = -1;
+        nodes[nodeIdx].child_R = -1;
+
+        (*numLeafNodes)++;
+        return nodeIdx;
+    }
+
+    // recursive case
+     
     // find longest axis to split on
     glm::vec3 extent = currentLayerBounds.maxCorner - currentLayerBounds.minCorner;
 
@@ -485,8 +504,8 @@ int Scene::recursiveBVHBuild(std::vector<Geom*> &triangles, int start, int end, 
                             }
                     );
     //recurse
-    int childLidx = recursiveBVHBuild(triangles, start, midIdx, numLeafNodes);
-    int childRidx = recursiveBVHBuild(triangles, midIdx, end, numLeafNodes);
+    int childLidx = recursiveBVHBuild(triangles, start, midIdx, depth + 1,numLeafNodes);
+    int childRidx = recursiveBVHBuild(triangles, midIdx, end, depth + 1, numLeafNodes);
 
     // build up our current node
     nodes[nodeIdx].child_L = childLidx;

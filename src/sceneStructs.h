@@ -110,7 +110,8 @@ struct BVHNode
     BVHBounds bbox;
     int child_L;
     int child_R;
-    int shapeidx; // holds a triangle in it if it is leaf
+    int tri_start; // triangle begin in geoms array
+    int tri_count; // how many triangles in our array, for a given bvhnode
     bool isLeaf;
 };
 

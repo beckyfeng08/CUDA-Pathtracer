@@ -37,7 +37,7 @@ private:
     
     //essentially this populates the nodes std::vector
     void buildBVH();
-    int recursiveBVHBuild(std::vector<Geom*> &triangles, int start, int end, int* numLeafNodes);
+    int recursiveBVHBuild(std::vector<Geom*> &triangles, int start, int end, int depth, int* numLeafNodes);
     BVHBounds Union(const BVHBounds& a, const BVHBounds &b);
 
 

@@ -210,26 +210,29 @@ __host__ __device__ float bvhNodeIntersectionTest(
         BVHNode& node = bvhnodes[currNodeIdx];
 
         // skip the rest of the loop if we didn't hit anything (test the other node)
-        if (bboxIntersectionTest(node.bbox, r) < 0.f) continue;
+        float tbox = bboxIntersectionTest(node.bbox, r);
+        if (tbox < 0.f || tbox > t_min) continue;
         
         if (node.isLeaf) // base case
         {
-            // normal triangle intersection stuff
-            Geom& triangle = geoms[node.shapeidx];
-
-            glm::vec3 tmp_isect, tmp_nor;
-            bool tmp_outside;
-
-            float t = triangleIntersectionTest(triangle, r, tmp_isect, tmp_nor, tmp_outside);
-
-            if (t > 0.f && t < t_min)
+            // itierate through all triangles in the leaf
+            for (int i = node.tri_start; i < node.tri_start + node.tri_count; i++)
             {
-                t_min = t;
-                intersectionPoint = tmp_isect;
-                normal = tmp_nor;
-                outside = tmp_outside;
-                geomIdx = node.shapeidx;
+                glm::vec3 tmp_isect, tmp_nor;
+                bool tmp_outside;
+
+                float t = triangleIntersectionTest(geoms[i], r, tmp_isect, tmp_nor, tmp_outside);
+
+                if (t > 0.f && t < t_min)
+                {
+                    t_min = t;
+                    intersectionPoint = tmp_isect;
+                    normal = tmp_nor;
+                    outside = tmp_outside;
+                    geomIdx = i;
+                }
             }
+
         }
         else
         {
@@ -264,9 +267,7 @@ __host__ __device__ float bvhNodeIntersectionTest(
     glm::vec3 tmp_normal;
     bool tmp_outside = false;
 
-     //TODO: BVH (fix logic here)
-    //if (USE_BVH && bvhnodes_size > 0)
-    if (false)
+    if (USE_BVH && bvhnodes_size > 0)
     {
         int tmp_geom_index = -1;
         // with t, check for intersection of the ray with the boudning volume
