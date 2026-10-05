@@ -263,12 +263,13 @@ __host__ __device__ float bvhNodeIntersectionTest(
 
     float t = -1;
     float t_min = FLT_MAX;
-    glm::vec3 tmp_intersect;
-    glm::vec3 tmp_normal;
+    glm::vec3 tmp_intersect(0.f);
+    glm::vec3 tmp_normal(0.f);
     bool tmp_outside = false;
 
     if (USE_BVH && bvhnodes_size > 0)
     {
+        // for triangles
         int tmp_geom_index = -1;
         // with t, check for intersection of the ray with the boudning volume
         t = bvhNodeIntersectionTest(0, bvhnodes, bvhnodes_size,
@@ -282,6 +283,25 @@ __host__ __device__ float bvhNodeIntersectionTest(
                 normal = tmp_normal;
                 outside = tmp_outside;
         }
+
+        // for non triangles, start at very end since the end is all non triangles
+        for (int i = geoms_size - 1; i >= 0 && geoms[i].type != TRIANGLE; i--)
+        {
+            float t = -1.f;
+            if (geom.type == CUBE)
+                t = boxIntersectionTest(geoms[i], r, tmp_intersect, tmp_normal, tmp_outside);
+            else if (geom.type == SPHERE)
+                t = sphereIntersectionTest(geoms[i], r, tmp_intersect, tmp_normal, tmp_outside);
+
+            if (t > 0.0f && t < t_min)
+            {
+                t_min = t;
+                hit_geom_index = i;
+                intersectionPoint = tmp_intersect;
+                normal = tmp_normal;
+                outside = tmp_outside;
+            }
+        }
     } 
     else
     {
@@ -290,20 +310,15 @@ __host__ __device__ float bvhNodeIntersectionTest(
             Geom& geom = geoms[i];
 
             if (geom.type == CUBE)
-            {
                 t = boxIntersectionTest(geom, r, tmp_intersect, tmp_normal, tmp_outside);
-            }
             else if (geom.type == SPHERE)
-            {
                 t = sphereIntersectionTest(geom, r, tmp_intersect, tmp_normal, tmp_outside);
-            } else if (geom.type == TRIANGLE) 
-            {
+            else if (geom.type == TRIANGLE) 
                 t = triangleIntersectionTest(geom, r, tmp_intersect, tmp_normal, tmp_outside);
-            }
 
             // Compute the minimum t from the intersection tests to determine what
             // scene geometry object was hit first.
-            if (t > 0.0f && t_min > t)
+            if (t > 0.0f && t < t_min)
             {
                 t_min = t;
                 hit_geom_index = i;

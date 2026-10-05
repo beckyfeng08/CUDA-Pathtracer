@@ -143,6 +143,7 @@ void Scene::set_up_ground_plane(glm::vec3 color)
 {
 // add a ground place for viewing
     Geom plane = Geom(CUBE, glm::vec3(0.,0., -3.f), glm::vec3(0.), glm::vec3(3.0, 0.1, 3.0));
+    plane.materialid = 1; // make it diffuse?
     geoms.push_back(plane);
 }
 
@@ -281,10 +282,14 @@ void Scene::load_materials(std::vector<tinyobj::material_t> objmaterials)
     {
         // make diffuse the default material
         glm::vec3 color(1.0, 1.0, 1.0);
-        Material mat = { color, 0, 0, 0, 0, 0 }; // hardcode vals, just do diffuse color for now
-        //Material mat = { color, 0, 0, 1.f, 1.4, 0 }; // TODO: fix the hardcode vals, test for dielectric
 
-        materials.emplace_back(mat);
+        Material dielectric_mat = { color, 0, 0, 1.f, 1.4, 0 }; // TODO: fix the hardcode vals, test for dielectric
+        Material diffuse_mat = { color, 0, 0, 0, 0, 0 }; // hardcode vals, just do diffuse color for now
+        
+        materials.emplace_back(dielectric_mat);
+
+        materials.emplace_back(diffuse_mat);
+
     }
 
     for (auto objmat = objmaterials.begin(); objmat < objmaterials.end(); objmat++)
@@ -436,6 +441,10 @@ void Scene::buildBVH() {
     for(auto& g : geoms) 
         if (g.type == TRIANGLE) tris.push_back(&g);
     
+    if (tris.empty()) { // no tris, no bvh
+        bvhRootIdx = -1;
+        return;
+    }
     int numLeafNodes = 0;
     bvhRootIdx = recursiveBVHBuild(tris, 0, tris.size(), 0, &numLeafNodes);
 
