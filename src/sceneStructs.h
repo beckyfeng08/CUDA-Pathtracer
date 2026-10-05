@@ -67,12 +67,26 @@ struct Geom
     Geom(GeomType type)
         : type(type),
           materialid(0),
-          translation(0.f),
-          rotation(0.f),
-          scale(1.f)
+          translation(glm::vec3(0.f)),
+          rotation(glm::vec3(0.f)),
+          scale(glm::vec3(1.f))
     {
         transform = utilityCore::buildTransformationMatrix(
               translation, rotation, scale);
+        inverseTransform = glm::inverse(transform);
+        invTranspose = glm::transpose(glm::inverse(transform));
+    }
+
+    __host__ __device__
+        Geom(GeomType type, glm::vec3 trans, glm::vec3 rot, glm::vec3 sc)
+        : type(type),
+        materialid(0),
+        translation(trans),
+        rotation(rot),
+        scale(sc)
+    {
+        transform = utilityCore::buildTransformationMatrix(
+            translation, rotation, scale);
         inverseTransform = glm::inverse(transform);
         invTranspose = glm::transpose(glm::inverse(transform));
     }

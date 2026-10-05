@@ -35,6 +35,7 @@ Scene::Scene(string filename)
     else if (ext == ".obj")
     {
         loadFromOBJ(filename, "");
+        set_up_ground_plane(glm::vec3(1.0));
         // put the triangles in a bvh
         buildBVH(); // maxdepth is 16
         return;
@@ -136,6 +137,13 @@ void Scene::set_up_default_lights(glm::vec3 color)
     default_point_light.normal = glm::normalize(glm::vec3(default_point_light.transform[1]));
 
     lights.push_back(default_point_light);
+}
+
+void Scene::set_up_ground_plane(glm::vec3 color)
+{
+// add a ground place for viewing
+    Geom plane = Geom(CUBE, glm::vec3(0.,0., -3.f), glm::vec3(0.), glm::vec3(3.0, 0.1, 3.0));
+    geoms.push_back(plane);
 }
 
 void Scene::set_up_render_cam(Camera& camera, RenderState& state)
@@ -267,7 +275,6 @@ void Scene::loadFromJSON(const std::string& jsonName)
 
 }
 
-
 void Scene::load_materials(std::vector<tinyobj::material_t> objmaterials)
 {
     if (objmaterials.empty())
@@ -283,12 +290,13 @@ void Scene::load_materials(std::vector<tinyobj::material_t> objmaterials)
     for (auto objmat = objmaterials.begin(); objmat < objmaterials.end(); objmat++)
     {
         glm::vec3 color = glm::vec3((*objmat).diffuse[0], (*objmat).diffuse[1], (*objmat).diffuse[2]);
-        Material mat = {color, 0, 0, 0, 0, 0}; // TODO: fix the hardcode vals, we just do diffuse color for now
-        //Material mat = { color, 0, 0, 1.f, 1.4, 0 }; // TODO: fix the hardcode vals, test for dielectric
+        //Material mat = {color, 0, 0, 0, 0, 0}; // TODO: fix the hardcode vals, we just do diffuse color for now
+        Material mat = { color, 0, 0, 1.f, 1.4, 0 }; // TODO: fix the hardcode vals, test for dielectric
 
         materials.emplace_back(mat);
     }
 }
+
 void Scene::populateBuffers(const tinyobj::attrib_t& attrib, 
     std::vector<glm::vec3>& vertices, 
     std::vector<glm::vec2>& uvs)
@@ -422,7 +430,6 @@ void Scene::loadFromOBJ(const std::string& filenameOBJ, const std::string& filen
     printf("number of triangles in the scene: %d", geoms.size());
 }
 
-
 void Scene::buildBVH() {
     nodes.clear();
     std::vector<Geom*> tris;
@@ -438,7 +445,7 @@ void Scene::buildBVH() {
     for (Geom* t : tris) reorderedGeoms.push_back(*t);
     for (auto& g : geoms)
         if (g.type != TRIANGLE) reorderedGeoms.push_back(g); // push back non triangle data last
-    geoms = std::move(reordered);
+    geoms = std::move(reorderedGeoms);
 
         std::cout << "Number of triangles in mesh: " << tris.size() << std::endl;
     std::cout << "Number of leaf nodes: " << numLeafNodes << std::endl;
@@ -470,7 +477,6 @@ int Scene::recursiveBVHBuild(std::vector<Geom*> &triangles, int start, int end, 
     int count = end - start;
     if (count <= BVH_MAX_LEAF_TRIS || depth >= BVH_MAX_DEPTH)
     {
-        nodes[nodeIdx].shapeidx = static_cast<int>(tri - geoms.data()); // true index in geoms
         nodes[nodeIdx].isLeaf = true;
         nodes[nodeIdx].tri_start = start;
         nodes[nodeIdx].tri_count = count;
