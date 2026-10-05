@@ -33,7 +33,7 @@ private:
 
         // populates materials
     void load_materials(std::vector<tinyobj::material_t> objmaterials);
-    void loadFromOBJ(const std::string& filenameOBJ, const std::string& filenameMTL);
+    void loadFromOBJ(const std::string& filenameOBJ);
 
     
     //essentially this populates the nodes std::vector

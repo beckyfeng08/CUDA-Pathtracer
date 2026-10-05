@@ -34,7 +34,7 @@ Scene::Scene(string filename)
     }
     else if (ext == ".obj")
     {
-        loadFromOBJ(filename, "");
+        loadFromOBJ(filename);
         set_up_cornell_box(20.0);
         // put the triangles in a bvh
         buildBVH(); // maxdepth is 16
@@ -421,8 +421,7 @@ void Scene::loadFromOBJ(const std::string& filenameOBJ)
     reader_config.mtl_search_path = "./"; // Path to material files
 
     tinyobj::ObjReader reader;
-
-    if (!reader.ParseFromFile(inputfile, reader_config)) {
+    if (!reader.ParseFromFile(filenameOBJ, reader_config)) {
     if (!reader.Error().empty()) {
         std::cerr << "TinyObjReader: " << reader.Error();
     }
@@ -436,40 +435,6 @@ void Scene::loadFromOBJ(const std::string& filenameOBJ)
     auto& attrib = reader.GetAttrib();
     auto& shapes = reader.GetShapes();
     auto& objmaterials = reader.GetMaterials();
-
-    std::string warn;
-    std::string err;
-    bool success;
-    if (filenameMTL.empty())
-        success = tinyobj::LoadObj(
-            &attrib,
-            &shapes,
-            &objmaterials,
-            &warn,
-            &err,
-            filenameOBJ.c_str(),
-            nullptr,
-            true
-        );
-    else
-        success = tinyobj::LoadObj(
-            &attrib,
-            &shapes,
-            &objmaterials,
-            &warn,
-            &err,
-            filenameOBJ.c_str(),
-            filenameMTL.c_str(),
-            true
-        );
-   
-    
-    if (!err.empty()) {
-        std::cerr << err << std::endl;
-    }
-    if (!success) {
-        exit(1);
-    }
 
     load_materials(objmaterials);
 
@@ -493,7 +458,7 @@ void Scene::loadFromOBJ(const std::string& filenameOBJ)
                                 glm::vec3(0.f, 1.f, 0.f));
 
     //required for display: set up render camera stuff
-    set_up_render_cam(state.camera, this->state);
+    set_up_render_cam(state.camera, state);
     printf("number of triangles in the scene: %d", geoms.size());
 }
 
