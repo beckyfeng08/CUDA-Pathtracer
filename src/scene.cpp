@@ -94,7 +94,7 @@ void Scene::set_up_default_lights(glm::vec3 color)
     default_area_light.color = color;
     default_area_light.intensity = 10;
 
-    default_area_light.translation = glm::vec3(0.0, 5.99, 0.0);
+    default_area_light.translation = glm::vec3(0.0, 9.99, 0.0);
     default_area_light.rotation = glm::vec3(200.0, 0.0, 0.0);
     default_area_light.scale = glm::vec3(3.f, 0.01f, 3.f);
 
@@ -348,8 +348,6 @@ void Scene::load_materials(std::vector<tinyobj::material_t> objmaterials)
             mat.hasReflective = 1.f;
             mat.indexOfRefraction = (om.ior > 1.f) ? om.ior : 1.5f; // set to 1.5 by default unless specified, or less than 1
 
-            glm::vec3 tf(om.transmittance[0], om.transmittance[1], om.transmittance[2]);
-            if (glm::dot(tf, tf) > 0.f) mat.color = tf;
         }
 
         materials.push_back(mat);
