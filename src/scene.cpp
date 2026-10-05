@@ -19,7 +19,7 @@ using json = nlohmann::json;
 
 #define BVH_MAX_DEPTH 16
 #define BVH_MAX_LEAF_TRIS 4
-#define RAY_DEPTH 64
+#define RAY_DEPTH 32
 
 Scene::Scene(string filename)
 {
@@ -95,7 +95,7 @@ void Scene::set_up_default_lights(glm::vec3 color)
     default_area_light.intensity = 10;
 
     default_area_light.translation = glm::vec3(0.0, 5.99, 0.0);
-    default_area_light.rotation = glm::vec3(120.0, 0.0, 0.0);
+    default_area_light.rotation = glm::vec3(200.0, 0.0, 0.0);
     default_area_light.scale = glm::vec3(3.f, 0.01f, 3.f);
 
     default_area_light.transform = utilityCore::buildTransformationMatrix(
@@ -462,8 +462,8 @@ void Scene::loadFromOBJ(const std::string& filenameOBJ)
     // hardcoded lights and camera in scene
 
     set_up_camera_default(800, 800, 45.f, 5000, RAY_DEPTH, filenameOBJ, 
-                                glm::vec3(0.f, 5.f, 10.5),
-                                glm::vec3(0.f, 5.f, 0.f),
+                                glm::vec3(0.f, 0.f, 5.5),
+                                glm::vec3(0.f, 2.f, 0.f),
                                 glm::vec3(0.f, 1.f, 0.f));
 
     //required for display: set up render camera stuff

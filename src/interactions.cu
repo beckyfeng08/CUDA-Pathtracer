@@ -175,7 +175,7 @@ __host__ __device__ glm::vec3 sampleDirectLighting(
 
         glm::vec3 rand_pt_light_w = glm::vec3(light.transform * glm::vec4(xy, 1.)); // take random point in local light, transform to world coordinate
 
-        glm::vec3 view_point = intersect;
+        glm::vec3 view_point = pathSegment.ray.origin;
         glm::vec3 wiW = glm::normalize(rand_pt_light_w - view_point);
 
         float cosTheta = glm::dot(light.normal, -wiW);
@@ -227,7 +227,7 @@ __host__ __device__ glm::vec3 sampleDirectLighting(
     }
     else if (light.type == POINTLIGHT) 
     {
-        glm::vec3 view_point = intersect;
+        glm::vec3 view_point = pathSegment.ray.origin;
 
         glm::vec3 wiW = glm::normalize(light.translation - view_point);
         float r = glm::length(light.translation - view_point);
