@@ -35,7 +35,7 @@ Scene::Scene(string filename)
     else if (ext == ".obj")
     {
         loadFromOBJ(filename, "");
-        set_up_ground_plane(glm::vec3(1.0));
+        set_up_cornell_box(20.0);
         // put the triangles in a bvh
         buildBVH(); // maxdepth is 16
         return;
@@ -103,24 +103,8 @@ void Scene::set_up_default_lights(glm::vec3 color)
     default_area_light.normal = glm::normalize(glm::vec3(default_area_light.transform[1]));
     lights.push_back(default_area_light);
 
-    Light default_area_light2;
-    default_area_light2.type = AREALIGHT;
-    default_area_light2.color = glm::vec3(1.0, 1.0, 1.0);
-    default_area_light2.intensity = 10;
 
-    default_area_light2.translation = glm::vec3(6.0, 1.99, 0.0);
-    default_area_light2.rotation = glm::vec3(90.0, 0.0, 90.0);
-    default_area_light2.scale = glm::vec3(3.f, 0.01f, 3.f);
-
-    default_area_light2.transform = utilityCore::buildTransformationMatrix(
-        default_area_light2.translation, default_area_light2.rotation, default_area_light2.scale);
-    default_area_light2.inverseTransform = glm::inverse(default_area_light2.transform);
-    default_area_light2.invTranspose = glm::inverseTranspose(default_area_light2.transform);
-    default_area_light2.normal = glm::normalize(glm::vec3(default_area_light2.transform[1]));
-    lights.push_back(default_area_light2);
-
-
-    Light default_point_light;
+    /*Light default_point_light;
     default_point_light.type = POINTLIGHT;
     default_point_light.pointLight.decay = 10.0;
     default_point_light.pointLight.range = 20.0;
@@ -136,15 +120,73 @@ void Scene::set_up_default_lights(glm::vec3 color)
     default_point_light.invTranspose = glm::inverseTranspose(default_point_light.transform);
     default_point_light.normal = glm::normalize(glm::vec3(default_point_light.transform[1]));
 
-    lights.push_back(default_point_light);
+    lights.push_back(default_point_light);*/
 }
 
-void Scene::set_up_ground_plane(glm::vec3 color)
+void Scene::set_up_cornell_box(float scale)
 {
-// add a ground place for viewing
-    Geom plane = Geom(CUBE, glm::vec3(0.,0., -3.f), glm::vec3(0.), glm::vec3(3.0, 0.1, 3.0));
-    plane.materialid = 1; // make it diffuse?
-    geoms.push_back(plane);
+    // room interior dimensions and wall thickness
+    const float W = scale;
+    const float H = scale;
+    const float D = scale;
+    const float T = scale;   // wall thickness
+
+    // materials
+    const int base = (int)materials.size();
+
+    Material white{};
+    white.color = glm::vec3(1.0);
+    Material red{};
+    red.color = glm::vec3(0.85f, 0.10f, 0.10f);
+    Material green{};
+    green.color = glm::vec3(0.10f, 0.85f, 0.10f);
+
+    materials.push_back(white);
+    materials.push_back(red);
+    materials.push_back(green);
+    const int WHITE = base + 0;
+    const int RED = base + 1;
+    const int GREEN = base + 2;
+
+    const glm::vec3 noRot(0.f);
+
+    // floor: top face at y = 0
+    Geom floor_(CUBE, glm::vec3(0.f, -T / 2.f, 0.f), noRot, glm::vec3(W + 2 * T, T, D), WHITE);
+
+    // ceiling: bottom face at y = H
+    Geom ceiling(CUBE, glm::vec3(0.f, H + T / 2.f, 0.f), noRot, glm::vec3(W + 2 * T, T, D), WHITE);
+
+    // left wall (red): inner face at x = -W/2
+    Geom leftWall(CUBE, glm::vec3(-(W / 2.f + T / 2.f), H / 2.f, 0.f), noRot, glm::vec3(T, H, D), RED);
+
+    // right wall (green): inner face at x = +W/2
+    Geom rightWall(CUBE, glm::vec3(W / 2.f + T / 2.f, H / 2.f, 0.f), noRot, glm::vec3(T, H, D), GREEN);
+
+    // back wall: inner face at z = -D/2, covers the edges of the other walls
+    Geom backWall(CUBE, glm::vec3(0.f, H / 2.f, -(D / 2.f + T / 2.f)), noRot, glm::vec3(W + 2 * T, H + 2 * T, T), WHITE);
+
+    geoms.push_back(floor_);
+    geoms.push_back(ceiling);
+    geoms.push_back(leftWall);
+    geoms.push_back(rightWall);
+    geoms.push_back(backWall);
+
+    // modify as necessary. There is a point and area light in here
+    Light default_area_light;
+    default_area_light.type = AREALIGHT;
+    default_area_light.color = glm::vec3(1.0);
+    default_area_light.intensity = 20;
+
+    default_area_light.translation = glm::vec3(0.0, scale - 1, 0.0);
+    default_area_light.rotation = glm::vec3(180.0, 0.0, 0.0);
+    default_area_light.scale = glm::vec3(scale/3.f, 0.01f, scale/ 3.f);
+
+    default_area_light.transform = utilityCore::buildTransformationMatrix(
+        default_area_light.translation, default_area_light.rotation, default_area_light.scale);
+    default_area_light.inverseTransform = glm::inverse(default_area_light.transform);
+    default_area_light.invTranspose = glm::inverseTranspose(default_area_light.transform);
+    default_area_light.normal = glm::normalize(glm::vec3(default_area_light.transform[1]));
+    lights.push_back(default_area_light);
 }
 
 void Scene::set_up_render_cam(Camera& camera, RenderState& state)
@@ -278,27 +320,34 @@ void Scene::loadFromJSON(const std::string& jsonName)
 
 void Scene::load_materials(std::vector<tinyobj::material_t> objmaterials)
 {
-    if (objmaterials.empty())
+    Material defaultMat{}; // add a default material to the scene just in case ya know
+    defaultMat.color = glm::vec3(0.8f);
+    materials.push_back(defaultMat);
+
+    for (const auto& om : objmaterials)
     {
-        // make diffuse the default material
-        glm::vec3 color(1.0, 1.0, 1.0);
+        Material mat{};
+        mat.color = glm::vec3(om.diffuse[0], om.diffuse[1], om.diffuse[2]);
 
-        Material dielectric_mat = { color, 0, 0, 1.f, 1.4, 0 }; // TODO: fix the hardcode vals, test for dielectric
-        Material diffuse_mat = { color, 0, 0, 0, 0, 0 }; // hardcode vals, just do diffuse color for now
-        
-        materials.emplace_back(dielectric_mat);
+        float emission = glm::max(om.emission[0], glm::max(om.emission[1], om.emission[2]));
+        if (emission > 0.f)
+        {
+            mat.color = glm::vec3(om.emission[0], om.emission[1], om.emission[2]) / emission;
+            mat.emittance = emission;
+        }
+        else if (om.illum == 4 || om.illum == 6 || om.illum == 7 || om.illum == 9
+            || om.dissolve < 0.99f) // refers to dielectric stuff
+        {
+            mat.isDielectric = 1.f;
+            mat.hasRefractive = 1.f;
+            mat.hasReflective = 1.f;
+            mat.indexOfRefraction = (om.ior > 1.f) ? om.ior : 1.5f; // set to 1.5 by default unless specified, or less than 1
 
-        materials.emplace_back(diffuse_mat);
+            glm::vec3 tf(om.transmittance[0], om.transmittance[1], om.transmittance[2]);
+            if (glm::dot(tf, tf) > 0.f) mat.color = tf;
+        }
 
-    }
-
-    for (auto objmat = objmaterials.begin(); objmat < objmaterials.end(); objmat++)
-    {
-        glm::vec3 color = glm::vec3((*objmat).diffuse[0], (*objmat).diffuse[1], (*objmat).diffuse[2]);
-        //Material mat = {color, 0, 0, 0, 0, 0}; // TODO: fix the hardcode vals, we just do diffuse color for now
-        Material mat = { color, 0, 0, 1.f, 1.4, 0 }; // TODO: fix the hardcode vals, test for dielectric
-
-        materials.emplace_back(mat);
+        materials.push_back(mat);
     }
 }
 
@@ -423,9 +472,7 @@ void Scene::loadFromOBJ(const std::string& filenameOBJ, const std::string& filen
     
     // hardcoded lights and camera in scene
 
-    set_up_default_lights(glm::vec3(0.95, 0.4, 0.2));
-
-    set_up_camera_default(800, 800, 45.f, 5000, 8, filenameOBJ, 
+    set_up_camera_default(800, 800, 45.f, 5000, 12, filenameOBJ, 
                                 glm::vec3(0.f, 5.f, 10.5),
                                 glm::vec3(0.f, 5.f, 0.f),
                                 glm::vec3(0.f, 1.f, 0.f));

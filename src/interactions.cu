@@ -60,33 +60,6 @@ __host__ __device__ glm::vec3 sampleDiffuse(
 
 
 // -------- DIELECTRIC RELATED FUNCTIONS --------- //
-__host__ __device__ glm::vec3 samplePerfectSpecularReflection(
-    PathSegment & pathSegment,
-    glm::vec3 intersect,
-    glm::vec3 normal,
-    const Material &m) 
-{
-    pathSegment.ray.direction = glm::reflect(pathSegment.ray.direction, normal);
-    pathSegment.ray.origin = intersect + pathSegment.ray.direction * EPSILON;
-    return m.color;
-}
-
-__host__ __device__ glm::vec3 samplePerfectSpecularTransmission(
-    float eta,
-    PathSegment & pathSegment,
-    glm::vec3 intersect,
-    glm::vec3 normal,
-    const Material &m) 
-{
-
-    glm::vec3 refraction_dir = glm::refract(pathSegment.ray.direction, normal, eta);
-
-    pathSegment.ray.direction = glm::normalize(refraction_dir);
-    pathSegment.ray.origin =
-        intersect + pathSegment.ray.direction * EPSILON *  100.f;
-
-    return m.color;
-}
 
 // fresnel reflection from dielectrics and unpolarized light
 __host__ __device__ float computeFresnelReflectance(float cosThetaI, float eta)
@@ -115,13 +88,6 @@ __host__ __device__ float computeFresnelReflectance(float cosThetaI, float eta)
     return F;
 }
 
-// another way to calculate fresnel, faster but less physically accurate
-__host__ __device__ float computeSchlickApproxF(float cosThetaI, float eta)
-{
-    float R0 = ((eta - 1.f) * (eta - 1.f) / ((eta + 1.f) * (eta + 1.f)));
-    return R0 + (1.f - R0) * glm::pow(1.f - cosThetaI, 5.f);
-}
-
 __host__ __device__ glm::vec3 sampleDielectric(
     PathSegment & pathSegment,
     glm::vec3 intersect,
@@ -129,47 +95,41 @@ __host__ __device__ glm::vec3 sampleDielectric(
     const Material &m,
     thrust::default_random_engine &rng)
 {
-    glm::vec3 resulting_color = m.color;
-    
-    float cosThetaI = glm::dot(normal, -pathSegment.ray.direction);
+    glm::vec3 n = glm::normalize(normal);
+    glm::vec3 wi = glm::normalize(pathSegment.ray.direction);
+
+    float cosThetaI = glm::dot(n, -wi);
     float etaI = 1.0f;
     float etaT = m.indexOfRefraction;
 
     if (cosThetaI < 0.0f)
     {
-        // exiting the material
+        n = -n;
         cosThetaI = -cosThetaI;
         etaI = m.indexOfRefraction;
         etaT = 1.0f;
     }
-
     float eta = etaI / etaT;
 
-    //float F = computeFresnelReflectance(cosThetaI, eta);
-    float F = computeSchlickApproxF(cosThetaI, eta);
+    float F = computeFresnelReflectance(cosThetaI, eta);
+
     thrust::uniform_real_distribution<float> u01(0, 1);
-    float probability = u01(rng);
+    glm::vec3 refracted = glm::refract(wi, n, eta);
+    bool total_internal = glm::dot(refracted, refracted) < EPSILON;
 
-    // russion roulette choose
-    if (probability < F) {
-        resulting_color = samplePerfectSpecularReflection(
-            pathSegment,
-            intersect,
-            normal,
-            m);
-    } else {
-        resulting_color = samplePerfectSpecularTransmission(
-            eta,
-            pathSegment,
-            intersect,
-            normal,
-            m);
+    if (u01(rng) < F)
+    {
+        pathSegment.ray.direction = glm::reflect(wi, n);
+        pathSegment.ray.origin = intersect + n * EPSILON;
     }
-
-    return resulting_color;
+    else
+    {
+        pathSegment.ray.direction = glm::normalize(refracted);
+        pathSegment.ray.origin = intersect - n * EPSILON; 
+    }
+    return m.color;
 }
 
-// TODO: clean up any vars not used in the code?
 __host__ __device__ glm::vec3 sampleDirectLighting(
     PathSegment& pathSegment,
     glm::vec3 intersect,

@@ -25,25 +25,6 @@ __host__ __device__ glm::vec3 sampleDiffuse(
     thrust::default_random_engine &rng);
 
 /**
- * Sample a pure reflective material like a mirror!
- */
-__host__ __device__ glm::vec3 samplePerfectSpecularReflection(
-    PathSegment & pathSegment,
-    glm::vec3 intersect,
-    glm::vec3 normal,
-    const Material &m);
-
-/**
- * Sample a pure transmitted material (with refractions and whatever)
- */
-__host__ __device__ glm::vec3 samplePerfectSpecularTransmission(
-    float eta,
-    PathSegment & pathSegment,
-    glm::vec3 intersect,
-    glm::vec3 normal,
-    const Material &m);
-
-/**
  * Two following ways to compute the fresnel term
  */
 __host__ __device__ float computeFresnelReflectance(float cosThetaI, float eta); // more accurate physically
