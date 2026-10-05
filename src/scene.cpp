@@ -19,6 +19,7 @@ using json = nlohmann::json;
 
 #define BVH_MAX_DEPTH 16
 #define BVH_MAX_LEAF_TRIS 4
+#define RAY_DEPTH 64
 
 Scene::Scene(string filename)
 {
@@ -35,7 +36,8 @@ Scene::Scene(string filename)
     else if (ext == ".obj")
     {
         loadFromOBJ(filename);
-        set_up_cornell_box(20.0);
+        //set_up_cornell_box(20.0);
+        set_up_default_lights(glm::vec3(1.0));
         // put the triangles in a bvh
         buildBVH(); // maxdepth is 16
         return;
@@ -92,8 +94,8 @@ void Scene::set_up_default_lights(glm::vec3 color)
     default_area_light.color = color;
     default_area_light.intensity = 10;
 
-    default_area_light.translation = glm::vec3(0.0, 9.99, 0.0);
-    default_area_light.rotation = glm::vec3(180.0, 0.0, 0.0);
+    default_area_light.translation = glm::vec3(0.0, 5.99, 0.0);
+    default_area_light.rotation = glm::vec3(120.0, 0.0, 0.0);
     default_area_light.scale = glm::vec3(3.f, 0.01f, 3.f);
 
     default_area_light.transform = utilityCore::buildTransformationMatrix(
@@ -104,7 +106,7 @@ void Scene::set_up_default_lights(glm::vec3 color)
     lights.push_back(default_area_light);
 
 
-    /*Light default_point_light;
+   /* Light default_point_light;
     default_point_light.type = POINTLIGHT;
     default_point_light.pointLight.decay = 10.0;
     default_point_light.pointLight.range = 20.0;
@@ -226,8 +228,7 @@ void Scene::loadFromJSON(const std::string& jsonName)
         {
             const auto& col = p["RGB"];
             newMaterial.color = glm::vec3(col[0], col[1], col[2]);
-            newMaterial.isDielectric = 1.0;
-            newMaterial.indexOfRefraction = 2.5; // TODO: change this later, if the json has something
+            newMaterial.hasReflective = 1;
         }
         MatNameToID[name] = materials.size();
         materials.emplace_back(newMaterial);
@@ -320,9 +321,13 @@ void Scene::loadFromJSON(const std::string& jsonName)
 
 void Scene::load_materials(std::vector<tinyobj::material_t> objmaterials)
 {
-    Material defaultMat{}; // add a default material to the scene just in case ya know
-    defaultMat.color = glm::vec3(0.8f);
-    materials.push_back(defaultMat);
+    
+    if (objmaterials.size() == 0)
+    {
+        Material defaultMat{}; // add a default material to the scene just in case ya know
+        defaultMat.color = glm::vec3(0.8f);
+        materials.push_back(defaultMat);
+    }
 
     for (const auto& om : objmaterials)
     {
@@ -336,7 +341,7 @@ void Scene::load_materials(std::vector<tinyobj::material_t> objmaterials)
             mat.emittance = emission;
         }
         else if (om.illum == 4 || om.illum == 6 || om.illum == 7 || om.illum == 9
-            || om.dissolve < 0.99f) // refers to dielectric stuff
+            || om.dissolve < 0.99f ||  om.ior > 1.0f) // refers to dielectric stuff
         {
             mat.isDielectric = 1.f;
             mat.hasRefractive = 1.f;
@@ -377,6 +382,7 @@ void Scene::load_triangles(const tinyobj::shape_t& shape,
     const std::vector<glm::vec3>& vertices,
     const std::vector<glm::vec2>& uvs)
 {
+    printf("shape here");
     const vector<tinyobj::index_t> & indices = shape.mesh.indices;
     const vector<int> & mat_ids = shape.mesh.material_ids;
     std::cout << "Loading " << mat_ids.size() << " triangles..." << std::endl;
@@ -418,8 +424,11 @@ void Scene::load_triangles(const tinyobj::shape_t& shape,
 void Scene::loadFromOBJ(const std::string& filenameOBJ)
 {
     tinyobj::ObjReaderConfig reader_config;
-    reader_config.mtl_search_path = "./"; // Path to material files
-
+    std::filesystem::path objPath(filenameOBJ);
+    reader_config.mtl_search_path =
+        objPath.has_parent_path()
+        ? objPath.parent_path().string() + "/"
+        : "./";
     tinyobj::ObjReader reader;
     if (!reader.ParseFromFile(filenameOBJ, reader_config)) {
     if (!reader.Error().empty()) {
@@ -452,7 +461,7 @@ void Scene::loadFromOBJ(const std::string& filenameOBJ)
     
     // hardcoded lights and camera in scene
 
-    set_up_camera_default(800, 800, 45.f, 5000, 12, filenameOBJ, 
+    set_up_camera_default(800, 800, 45.f, 5000, RAY_DEPTH, filenameOBJ, 
                                 glm::vec3(0.f, 5.f, 10.5),
                                 glm::vec3(0.f, 5.f, 0.f),
                                 glm::vec3(0.f, 1.f, 0.f));

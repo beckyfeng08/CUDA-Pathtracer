@@ -42,6 +42,16 @@ __host__ __device__ glm::vec3 sampleDielectric(
     thrust::default_random_engine &rng);
 
 /**
+ * Samples a reflective material, returns bsdf from it
+ */
+__host__ __device__ glm::vec3 sampleReflection(
+    PathSegment& pathSegment,
+    glm::vec3 intersect,
+    glm::vec3 normal,
+    const Material& m,
+    thrust::default_random_engine& rng);
+
+/**
  * Calculates direct lighting at a particular given ray
  */
 __host__ __device__ glm::vec3 sampleDirectLighting(
