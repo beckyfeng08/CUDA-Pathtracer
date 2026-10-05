@@ -203,7 +203,7 @@ __host__ __device__ glm::vec3 sampleDirectLighting(
                 // resulting_color = light.color * light.intensity * light_size / pdf;
                 glm::vec3 le = light.color * light.intensity / area;
                 float pdfsolidangle = r * r / (cosThetaSurface * area);
-                resulting_color = le * cosTheta * lights_size / pdfsolidangle;
+                resulting_color = le * cosTheta * (float) lights_size / pdfsolidangle;
 
             }
         }
