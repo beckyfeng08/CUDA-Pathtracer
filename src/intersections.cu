@@ -195,212 +195,52 @@ __host__ __device__ float bvhNodeIntersectionTest(
     int& geomIdx)
 {
     // TODO: do an array based in place situation
-    geomIdx = -1;
-    // first: just show the triangles in teh bvhnodes
     float t_min = FLT_MAX;
-    float t = -1;
+    geomIdx = -1;
+    int stack[64]; // TODO: do it based on some non-hardcoded val?
+    stack[0] = bvhnodeIdx; // push the root node onto the stack
+    int stackSize = 1; // currently has size 1
 
-    for (int i=0; i < bvhnodes_size; i++)
+    // we want to add bvhnodes onto our stack when we traverse them
+    while (stackSize > 0)
     {
-        BVHNode node = bvhnodes[i];
-        if (node.isLeaf) {
-            Geom thetriangle = geoms[node.shapeidx];
-            geomIdx = node.shapeidx;
-            glm::vec3 tmp_isectpt, tmp_normal, tmp_outside;
+        // pop it off the stack
+        stackSize--;
+        int currNodeIdx = stack[stackSize];
+        BVHNode& node = bvhnodes[currNodeIdx];
 
-            t = triangleIntersectionTest(thetriangle, r, tmp_isectpt, tmp_normal, tmp_outside);
-            if (t > 0 && t < t_min)
+        // skip the rest of the loop if we didn't hit anything (test the other node)
+        if (bboxIntersectionTest(node.bbox, r) < 0.f) continue;
+        
+        if (node.isLeaf) // base case
+        {
+            // normal triangle intersection stuff
+            Geom& triangle = geoms[node.shapeidx];
+
+            glm::vec3 tmp_isect, tmp_nor;
+            bool tmp_outside;
+
+            float t = triangleIntersectionTest(triangle, r, tmp_isect, tmp_nor, tmp_outside);
+
+            if (t > 0.f && t < t_min)
             {
-                intersectionPoint = tmp_isectpt;
-                normal = tmp_normal;
-                outside = tmp_outside;
                 t_min = t;
+                intersectionPoint = tmp_isect;
+                normal = tmp_nor;
+                outside = tmp_outside;
                 geomIdx = node.shapeidx;
             }
         }
-
+        else
+        {
+            // push the children onto the stack
+            stack[stackSize] = node.child_L;
+            stackSize++;
+            stack[stackSize] = node.child_R;
+            stackSize++;
+        }
     }
-    return geomIdx == -1? -1.f : t_min;
-    // float t = -1.f;
-    // BVHNode node = bvhnodes[bvhnodeIdx];
-
-    // // see if the ray misses the bbox
-    // if (bboxIntersectionTest(node.bbox, r) <= 0.f) 
-    //     return -1.f;
-
-    // // base case: test intersection with the triangle
-    // if (node.isLeaf) {
-    //     Geom thetriangle = geoms[node.shapeidx];
-    //     geomIdx = node.shapeidx;
-    //     return triangleIntersectionTest(thetriangle, r, intersectionPoint, normal, outside);
-    // }
-
-    // // recursive case
-    // int leftIdx = node.child_L;
-    // int rightIdx = node.child_R;
-
-    // BVHNode& lnode = bvhnodes[leftIdx];
-    // BVHNode& rnode = bvhnodes[rightIdx];
-    
-    // float t_l = bboxIntersectionTest(lnode.bbox, r);
-    // float t_r = bboxIntersectionTest(rnode.bbox, r);
-
-    // if (t_l > 0.f && t_r > 0.f) // both boxes are intersected by the ray
-    // {
-    //     // check is there is any overlap shared by the two boxes (like a triangle hogging both boxes)
-
-    //     glm::vec3 l_r = lnode.bbox.maxCorner - rnode.bbox.minCorner;
-    //     glm::vec3 r_l = rnode.bbox.maxCorner - lnode.bbox.minCorner;
-
-    //     bool overlap =
-    //         lnode.bbox.minCorner.x <= rnode.bbox.maxCorner.x &&
-    //         lnode.bbox.maxCorner.x >= rnode.bbox.minCorner.x &&
-    //         lnode.bbox.minCorner.y <= rnode.bbox.maxCorner.y &&
-    //         lnode.bbox.maxCorner.y >= rnode.bbox.minCorner.y &&
-    //         lnode.bbox.minCorner.z <= rnode.bbox.maxCorner.z &&
-    //         lnode.bbox.maxCorner.z >= rnode.bbox.minCorner.z;
-    //     if (overlap)
-    //     {
-    //         glm::vec3 rightIntersectPoint, leftIntersectPoint,
-    //             rnormal, lnormal;
-    //         bool routside, loutside;
-    //         int rgeomIdx, lgeomIdx;
-
-    //         t_l = bvhNodeIntersectionTest(
-    //             leftIdx, 
-    //             bvhnodes,
-    //             bvhnodes_size,
-    //             geoms,
-    //             r,
-    //             leftIntersectPoint,
-    //             lnormal,
-    //             loutside,
-    //             lgeomIdx);
-    //         t_r = bvhNodeIntersectionTest(
-    //             rightIdx, 
-    //             bvhnodes,
-    //             bvhnodes_size,
-    //             geoms,
-    //             r,
-    //             rightIntersectPoint,
-    //             rnormal,
-    //             routside,
-    //             rgeomIdx);
-
-    //         bool leftIntersectionCond = (t_l != -1 && t_r != -1 && t_l < t_r) // both l and r have intersections but t is closer
-    //             || (t_l != -1 && t_r == -1); // l has an intersection but not r
-    //         bool rightIntersectionCond = (t_l != -1 && t_r != -1 && t_r <= t_l) // both l and r have an intersection but r is closer than l
-    //             || (t_l == -1 && t_r != -1); // r has an intersection but not l
-
-            
-    //         if (leftIntersectionCond)
-    //         {
-    //             intersectionPoint = leftIntersectPoint;
-    //             normal = lnormal;
-    //             outside = loutside;
-    //             geomIdx = lgeomIdx;
-    //             t = t_l;
-    //         } 
-    //         else if (rightIntersectionCond)
-    //         {
-    //             intersectionPoint = rightIntersectPoint;
-    //             normal = rnormal;
-    //             outside = routside;
-    //             geomIdx = rgeomIdx;
-    //             t = t_r;
-    //         }
-
-    //     }
-    //     else // no overlap between the bounding volumes
-    //     {
-    //         // we want to intersect the closest child first. If we don't find an intersection with that child, then try interscting the other child
-    //         if (t_l < t_r)
-    //         {
-    //             t = bvhNodeIntersectionTest(
-    //                     leftIdx, 
-    //                     bvhnodes,
-    //                     bvhnodes_size,
-    //                     geoms,
-    //                     r,
-    //                     intersectionPoint,
-    //                     normal,
-    //                     outside, 
-    //                     geomIdx);
-    //             // if there is no intersection, try the other node
-    //             if (t == -1)
-    //             {
-    //                 t = bvhNodeIntersectionTest(
-    //                     rightIdx, 
-    //                     bvhnodes,
-    //                     bvhnodes_size,
-    //                     geoms,
-    //                     r,
-    //                     intersectionPoint,
-    //                     normal,
-    //                     outside, 
-    //                     geomIdx);
-    //             }
-    //         }
-    //         else 
-    //         {
-    //             t = bvhNodeIntersectionTest(
-    //                     rightIdx, 
-    //                     bvhnodes,
-    //                     bvhnodes_size,
-    //                     geoms,
-    //                     r,
-    //                     intersectionPoint,
-    //                     normal,
-    //                     outside,
-    //                     geomIdx);
-    //             // if there is no intersection, try the other node
-    //             if (t == -1)
-    //             {
-    //                 t = bvhNodeIntersectionTest(
-    //                     leftIdx, 
-    //                     bvhnodes,
-    //                     bvhnodes_size,
-    //                     geoms,
-    //                     r,
-    //                     intersectionPoint,
-    //                     normal,
-    //                     outside,
-    //                     geomIdx);
-    //             }
-    //         }
-    //     }
-    // } 
-    // else if (t_l > 0.f && t_r <= 0.f) // only left box intersected
-    // {
-
-    //     t = bvhNodeIntersectionTest(
-    //                     leftIdx, 
-    //                     bvhnodes,
-    //                     bvhnodes_size,
-    //                     geoms,
-    //                     r,
-    //                     intersectionPoint,
-    //                     normal,
-    //                     outside,
-    //                     geomIdx);
-
-
-    // } 
-    // else if (t_l <= 0.f && t_r > 0.f) // only right box intersected
-    // {
-    //     t = bvhNodeIntersectionTest(
-    //                     rightIdx, 
-    //                     bvhnodes,
-    //                     bvhnodes_size,
-    //                     geoms,
-    //                     r,
-    //                     intersectionPoint,
-    //                     normal,
-    //                     outside,
-    //                     geomIdx);
-    // }
-    // return t;
-
+    return t_min;
 }
 
 
