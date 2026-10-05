@@ -132,6 +132,21 @@ __host__ __device__ glm::vec3 sampleDielectric(
 
 }
 
+
+__host__ __device__ glm::vec3 sampleReflection(
+    PathSegment& pathSegment,
+    glm::vec3 intersect,
+    glm::vec3 normal,
+    const Material& m,
+    thrust::default_random_engine& rng)
+{
+    glm::vec3 n = glm::normalize(normal);
+    glm::vec3 wi = glm::normalize(pathSegment.ray.direction);
+    pathSegment.ray.direction = glm::reflect(wi, n);
+    pathSegment.ray.origin = intersect + n * EPSILON;
+    return m.color;
+}
+
 __host__ __device__ glm::vec3 sampleDirectLighting(
     PathSegment& pathSegment,
     glm::vec3 intersect,
@@ -280,6 +295,18 @@ __host__ __device__ void scatterRay(
             rng);
         pathSegment.specularBounce = 1;
         // Indirect
+        pathSegment.color *= resulting_color;
+    }
+    else if (m.hasReflective)
+    {
+        // pure reflection
+        resulting_color = sampleReflection(
+            pathSegment,
+            intersect,
+            normal,
+            m,
+            rng);
+        pathSegment.specularBounce = 1;
         pathSegment.color *= resulting_color;
     }
     else
