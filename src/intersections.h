@@ -108,7 +108,7 @@ __host__ __device__ float bvhNodeIntersectionTest(
     glm::vec3 &intersectionPoint,
     glm::vec3 &normal,
     bool &outside,
-    int& geomIdx, int depth = 0);
+    int& geomIdx);
 /**
  * Handles all geometry intersection, calls intersection tests for sphere and box and triangles or whatever
  *

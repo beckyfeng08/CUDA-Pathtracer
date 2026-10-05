@@ -192,23 +192,11 @@ __host__ __device__ float bvhNodeIntersectionTest(
     glm::vec3 &intersectionPoint,
     glm::vec3 &normal,
     bool &outside,
-    int& geomIdx,
-    int depth)
+    int& geomIdx)
 {
+    // TODO: do an array based in place situation
     float t = -1.f;
-    if (bvhnodeIdx >= bvhnodes_size || bvhnodeIdx < 0)
-    {
-        printf("idk how u got here but ur not supposed to be here");
-            return -1.f;
-    }
     BVHNode node = bvhnodes[bvhnodeIdx];
-
-    depth++;
-    if (depth > bvhnodes_size) {
-        printf("BVH recursion exceeded node count: idx=%d depth=%d\n",
-            bvhnodeIdx, depth);
-        return -1.f;
-    }
 
     // see if the ray misses the bbox
     if (bboxIntersectionTest(node.bbox, r) <= 0.f) 
@@ -225,16 +213,6 @@ __host__ __device__ float bvhNodeIntersectionTest(
     int leftIdx = node.child_L;
     int rightIdx = node.child_R;
 
-    if (leftIdx >= bvhnodes_size || leftIdx < 0)
-    {
-        printf("LEFT idk how u got here but ur not supposed to be here");
-        return -1.f;
-    }
-    if (rightIdx >= bvhnodes_size || rightIdx < 0)
-    {
-        printf("RIGHT idk how u got here but ur not supposed to be here");
-        return -1.f;
-    }
     BVHNode& lnode = bvhnodes[leftIdx];
     BVHNode& rnode = bvhnodes[rightIdx];
     
@@ -255,8 +233,6 @@ __host__ __device__ float bvhNodeIntersectionTest(
             lnode.bbox.maxCorner.y >= rnode.bbox.minCorner.y &&
             lnode.bbox.minCorner.z <= rnode.bbox.maxCorner.z &&
             lnode.bbox.maxCorner.z >= rnode.bbox.minCorner.z;
-        return -1;
-
         if (overlap)
         {
             glm::vec3 rightIntersectPoint, leftIntersectPoint,
@@ -273,7 +249,7 @@ __host__ __device__ float bvhNodeIntersectionTest(
                 leftIntersectPoint,
                 lnormal,
                 loutside,
-                lgeomIdx, depth);
+                lgeomIdx);
             t_r = bvhNodeIntersectionTest(
                 rightIdx, 
                 bvhnodes,
@@ -283,7 +259,7 @@ __host__ __device__ float bvhNodeIntersectionTest(
                 rightIntersectPoint,
                 rnormal,
                 routside,
-                rgeomIdx, depth);
+                rgeomIdx);
 
             bool leftIntersectionCond = (t_l != -1 && t_r != -1 && t_l < t_r) // both l and r have intersections but t is closer
                 || (t_l != -1 && t_r == -1); // l has an intersection but not r
@@ -323,7 +299,7 @@ __host__ __device__ float bvhNodeIntersectionTest(
                         intersectionPoint,
                         normal,
                         outside, 
-                        geomIdx, depth);
+                        geomIdx);
                 // if there is no intersection, try the other node
                 if (t == -1)
                 {
@@ -336,7 +312,7 @@ __host__ __device__ float bvhNodeIntersectionTest(
                         intersectionPoint,
                         normal,
                         outside, 
-                        geomIdx, depth);
+                        geomIdx);
                 }
             }
             else 
@@ -350,7 +326,7 @@ __host__ __device__ float bvhNodeIntersectionTest(
                         intersectionPoint,
                         normal,
                         outside,
-                        geomIdx, depth);
+                        geomIdx);
                 // if there is no intersection, try the other node
                 if (t == -1)
                 {
@@ -363,15 +339,13 @@ __host__ __device__ float bvhNodeIntersectionTest(
                         intersectionPoint,
                         normal,
                         outside,
-                        geomIdx, depth);
+                        geomIdx);
                 }
             }
         }
     } 
     else if (t_l > 0.f && t_r <= 0.f) // only left box intersected
     {
-        return -1;
-
 
         t = bvhNodeIntersectionTest(
                         leftIdx, 
@@ -382,14 +356,12 @@ __host__ __device__ float bvhNodeIntersectionTest(
                         intersectionPoint,
                         normal,
                         outside,
-                        geomIdx, depth);
+                        geomIdx);
 
 
     } 
     else if (t_l <= 0.f && t_r > 0.f) // only right box intersected
     {
-        return -1;
-
         t = bvhNodeIntersectionTest(
                         rightIdx, 
                         bvhnodes,
@@ -399,7 +371,7 @@ __host__ __device__ float bvhNodeIntersectionTest(
                         intersectionPoint,
                         normal,
                         outside,
-                        geomIdx, depth);
+                        geomIdx);
     }
     return t;
 
@@ -433,7 +405,7 @@ __host__ __device__ float bvhNodeIntersectionTest(
         int tmp_geom_index = -1;
         // with t, check for intersection of the ray with the boudning volume
         t = bvhNodeIntersectionTest(0, bvhnodes, bvhnodes_size,
-                        geoms, r, tmp_intersect, tmp_normal, tmp_outside, tmp_geom_index, 0);
+                        geoms, r, tmp_intersect, tmp_normal, tmp_outside, tmp_geom_index);
 
         if (t > 0.0f && t_min > t) 
         {
