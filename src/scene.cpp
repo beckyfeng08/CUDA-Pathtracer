@@ -19,6 +19,7 @@ using json = nlohmann::json;
 
 #define BVH_MAX_DEPTH 16
 #define BVH_MAX_LEAF_TRIS 4
+#define RAY_DEPTH 64
 
 Scene::Scene(string filename)
 {
@@ -461,7 +462,7 @@ void Scene::loadFromOBJ(const std::string& filenameOBJ)
     
     // hardcoded lights and camera in scene
 
-    set_up_camera_default(800, 800, 45.f, 5000, 8, filenameOBJ, 
+    set_up_camera_default(800, 800, 45.f, 5000, RAY_DEPTH, filenameOBJ, 
                                 glm::vec3(0.f, 5.f, 10.5),
                                 glm::vec3(0.f, 5.f, 0.f),
                                 glm::vec3(0.f, 1.f, 0.f));
