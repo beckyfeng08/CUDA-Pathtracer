@@ -1,6 +1,7 @@
 CUDA Path Tracer
 ================
 Rebecca Feng
+
 [LinkedIn](https://www.linkedin.com/in/beckyfeng0803/), [personal website](https://beckyfeng08.github.io/)
 Tested on: Windows 11, AMD Ryzen 9 @ 2.50 GHz 8GB, GTX 5060
 Visual Studio 2022, CUDA 13.3
