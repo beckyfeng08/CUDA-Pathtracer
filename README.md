@@ -1,9 +1,14 @@
 CUDA Path Tracer
 ================
 ### Resulting Renders
-![cover render](<img/README_images/RENDER (5).png>)
-![monkeys render](<img/README_images/RENDER (3).png>)
-![horses render](<img/README_images/RENDER (10).png>)
+<img src="img/README_images/render5_1000it.png" alt="Cover render" />
+
+*Cover render — 1000 iterations*
+
+<img src="img/README_images/render3_173it.png" height="400" alt="Monkeys render" /> <img src="img/README_images/render10_1004it.png" height="400" alt="Horses render" />
+
+*Monkeys render — 173 iterations*  
+*Horses render — 1004 iterations*
 
 Rebecca Feng
   * = [LinkedIn](https://www.linkedin.com/in/beckyfeng0803/), [personal website](https://beckyfeng08.github.io/)
