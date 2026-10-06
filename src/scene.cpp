@@ -335,19 +335,22 @@ void Scene::load_materials(std::vector<tinyobj::material_t> objmaterials)
         mat.color = glm::vec3(om.diffuse[0], om.diffuse[1], om.diffuse[2]);
 
         float emission = glm::max(om.emission[0], glm::max(om.emission[1], om.emission[2]));
+        float specular = glm::vec3(om.specular[0], om.specular[1], om.specular[2]);
+        float tf = glm::vec3(om.transmittance[0], om.transmittance[1], om.transmittance[2]);
+
         if (emission > 0.f)
         {
             mat.color = glm::vec3(om.emission[0], om.emission[1], om.emission[2]) / emission;
             mat.emittance = emission;
         }
-        else if (om.illum == 4 || om.illum == 6 || om.illum == 7 || om.illum == 9
-            || om.dissolve < 0.99f ||  om.ior > 1.0f) // refers to dielectric stuff
+        else if (glm::dot(tf, tf) > 0.f) // refers to dielectric stuff
         {
             mat.isDielectric = 1.f;
-            mat.hasRefractive = 1.f;
-            mat.hasReflective = 1.f;
             mat.indexOfRefraction = (om.ior > 1.f) ? om.ior : 1.5f; // set to 1.5 by default unless specified, or less than 1
 
+        } else if (glm::length(specular) > 0.01f)
+        {
+            mat.hasReflective = 1.f;
         }
 
         materials.push_back(mat);
