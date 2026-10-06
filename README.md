@@ -5,9 +5,9 @@ CUDA Path Tracer
 
 *Cover render — 1000 iterations*
 
-<img src="img/README_images/render3_173it.png" height="400" alt="Monkeys render" /> <img src="img/README_images/render10_1004it.png" height="400" alt="Horses render" />
-
-*Monkeys render — 173 iterations*  
+<img src="img/README_images/render3_173it.png" height="300" alt="Monkeys render" /> 
+*Monkeys render — 173 iterations*
+<img src="img/README_images/render10_1004it.png" height="300" alt="Horses render" />
 *Horses render — 1004 iterations*
 
 Rebecca Feng
