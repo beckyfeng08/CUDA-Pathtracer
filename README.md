@@ -1,6 +1,7 @@
 CUDA Path Tracer
 ================
-<img src="img/README_images/render5_1000it.png" height="300" alt="Cover render" /> <img src="img/README_images/render8_469it.png" height="300" alt="Cover render" />
+<img src="img/README_images/render5_1000it.png" height="400" alt="Cover render" /> <img src="img/README_images/render8_469it.png" height="400" alt="Cover render" />
+
 1000 iterations, models from https://sketchfab.com/Miaolailai
 
 | Monkeys render — 173 iterations | Horses render — 1004 iterations |
