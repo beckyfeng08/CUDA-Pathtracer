@@ -159,26 +159,28 @@ __host__ __device__ float triangleIntersectionTest(Geom tri,
 
 __host__ __device__ float bboxIntersectionTest(BVHBounds bbox, Ray r)
 {
-    
-    glm::vec3 invDir = glm::vec3(1.f /(r.direction.x + EPSILON), 
-                                1.f / (r.direction.y  + EPSILON), 
-                                1.f /(r.direction.z + EPSILON)) ;
-    glm::vec3 near = (bbox.minCorner - r.origin) * invDir;
-    glm::vec3 far  = (bbox.maxCorner - r.origin) * invDir;
+    // avoid division by zero without skewing the ray
+    glm::vec3 d = r.direction;
+    d.x = (fabsf(d.x) < 1e-8f) ? copysignf(1e-8f, d.x) : d.x;
+    d.y = (fabsf(d.y) < 1e-8f) ? copysignf(1e-8f, d.y) : d.y;
+    d.z = (fabsf(d.z) < 1e-8f) ? copysignf(1e-8f, d.z) : d.z;
+    glm::vec3 invDir = 1.f / d;
 
-    glm::vec3 tmin = glm::min(near, far);
-    glm::vec3 tmax = glm::max(near, far);
+    glm::vec3 nearT = (bbox.minCorner - r.origin) * invDir;
+    glm::vec3 farT = (bbox.maxCorner - r.origin) * invDir;
+
+    glm::vec3 tmin = glm::min(nearT, farT);
+    glm::vec3 tmax = glm::max(nearT, farT);
 
     float t0 = glm::max(glm::max(tmin.x, tmin.y), tmin.z);
     float t1 = glm::min(glm::min(tmax.x, tmax.y), tmax.z);
 
-    // box is behind ray or slabs don't overlap
-    if(t0 > t1 || t1 <= 0.f) 
+    // slabs don't overlap, or the whole box is behind the ray
+    if (t0 > t1 || t1 <= 0.f)
         return -1.f;
-    if(t0 > 0.f) // We're outside the box looking at it
-        return t0;
 
-    return t1; // we are inside the box looking at it
+    // entry distance; 0 if the origin is inside the box
+    return glm::max(t0, 0.f);
 }
 
 __host__ __device__ float bvhNodeIntersectionTest(

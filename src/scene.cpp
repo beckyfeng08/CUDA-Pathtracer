@@ -19,7 +19,7 @@ using json = nlohmann::json;
 
 #define BVH_MAX_DEPTH 16
 #define BVH_MAX_LEAF_TRIS 4
-#define RAY_DEPTH 32
+#define RAY_DEPTH 64
 
 Scene::Scene(string filename)
 {
@@ -94,8 +94,8 @@ void Scene::set_up_default_lights(glm::vec3 color)
     default_area_light.color = color;
     default_area_light.intensity = 10;
 
-    default_area_light.translation = glm::vec3(0.0, 9.99, 0.0);
-    default_area_light.rotation = glm::vec3(200.0, 0.0, 0.0);
+    default_area_light.translation = glm::vec3(0.0, 6.99, 5.0);
+    default_area_light.rotation = glm::vec3(240.0, 0.0, 0.0);
     default_area_light.scale = glm::vec3(3.f, 0.01f, 3.f);
 
     default_area_light.transform = utilityCore::buildTransformationMatrix(
@@ -106,13 +106,13 @@ void Scene::set_up_default_lights(glm::vec3 color)
     lights.push_back(default_area_light);
 
 
-   /* Light default_point_light;
+   Light default_point_light;
     default_point_light.type = POINTLIGHT;
     default_point_light.pointLight.decay = 10.0;
     default_point_light.pointLight.range = 20.0;
-    default_point_light.color = color;
-    default_point_light.intensity = 10;
-    default_point_light.translation = glm::vec3(-3.0, 4.99, 0.0);
+    default_point_light.color = glm::vec3(0.3, 0.6, 0.9);
+    default_point_light.intensity = 20;
+    default_point_light.translation = glm::vec3(-5.0, 4.99, 0.0);
     default_point_light.rotation = glm::vec3(0.0, 0.0, 0.0);
     default_point_light.scale = glm::vec3(1.f);
 
@@ -121,8 +121,25 @@ void Scene::set_up_default_lights(glm::vec3 color)
     default_point_light.inverseTransform = glm::inverse(default_point_light.transform);
     default_point_light.invTranspose = glm::inverseTranspose(default_point_light.transform);
     default_point_light.normal = glm::normalize(glm::vec3(default_point_light.transform[1]));
+    lights.push_back(default_point_light);
 
-    lights.push_back(default_point_light);*/
+    Light light3;
+    light3.type = AREALIGHT;
+    light3.color = glm::vec3(0.8, 0.6, 0.3);
+    light3.intensity = 20;
+
+    light3.translation = glm::vec3(13.0, 5.99, 0.0);
+    light3.rotation = glm::vec3(0.0, 20.0, 120.0);
+    light3.scale = glm::vec3(5.f, 0.01f, 5.f);
+
+    light3.transform = utilityCore::buildTransformationMatrix(
+        light3.translation, light3.rotation, light3.scale);
+    light3.inverseTransform = glm::inverse(light3.transform);
+    light3.invTranspose = glm::inverseTranspose(light3.transform);
+    light3.normal = glm::normalize(glm::vec3(light3.transform[1]));
+    lights.push_back(light3);
+
+
 }
 
 void Scene::set_up_cornell_box(float scale)
@@ -335,8 +352,8 @@ void Scene::load_materials(std::vector<tinyobj::material_t> objmaterials)
         mat.color = glm::vec3(om.diffuse[0], om.diffuse[1], om.diffuse[2]);
 
         float emission = glm::max(om.emission[0], glm::max(om.emission[1], om.emission[2]));
-        float specular = glm::vec3(om.specular[0], om.specular[1], om.specular[2]);
-        float tf = glm::vec3(om.transmittance[0], om.transmittance[1], om.transmittance[2]);
+        glm::vec3 specular = glm::vec3(om.specular[0], om.specular[1], om.specular[2]);
+        glm::vec3 tf = glm::vec3(om.transmittance[0], om.transmittance[1], om.transmittance[2]);
 
         if (emission > 0.f)
         {
@@ -462,8 +479,8 @@ void Scene::loadFromOBJ(const std::string& filenameOBJ)
     
     // hardcoded lights and camera in scene
 
-    set_up_camera_default(800, 800, 45.f, 5000, RAY_DEPTH, filenameOBJ, 
-                                glm::vec3(0.f, 0.f, 5.5),
+    set_up_camera_default(1000, 800, 45.f, 5000, RAY_DEPTH, filenameOBJ, 
+                                glm::vec3(0.f, 0.f, 7.5),
                                 glm::vec3(0.f, 2.f, 0.f),
                                 glm::vec3(0.f, 1.f, 0.f));
 
