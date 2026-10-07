@@ -93,6 +93,7 @@ Bounding volume hierarchies significantly sped up our implementation. Without BV
   | 10 second render, No BVH (4 iterations) |  10 second render, With BVH (94 iterations) |
 | ------------- | ------------- | 
 |<img src="img/README_images/nobvh.png" height="300" alt="teapot render" /> | <img src="img/README_images/yesbvh.png" height="300" alt="teapot render" /> | 
+
 The teapot has a fully reflective material, and has 6320 triangles.
 
 As we can see, in just 10 seconds, a BVH is able to render out 94 iterations for a teapot, whereas without one, it is only able to render out 4 iterations.
