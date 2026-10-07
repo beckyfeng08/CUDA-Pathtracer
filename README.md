@@ -50,7 +50,7 @@ Used the Thrust library's stream compaction functionality, where we terminate ra
 This method allows for faster renders, per iteration.
 
 #### Performance
-Without stream compaction, it is much slower to render out. Using a cornell box scene with a fully reflective teapot (using BVH and direct lighting), we plot out the time it takes to render 100 frames vs ray depth, with and without stream compaction:
+Without stream compaction, it is much slower to render out. Using a cornell box scene with a fully reflective teapot (using BVH and direct lighting, render shown in BVH section), we plot out the time it takes to render 100 frames vs ray depth, with and without stream compaction:
 
 <img src="img/README_images/streamcompactiongraph.png" height="300" alt="Cover render" />
 
