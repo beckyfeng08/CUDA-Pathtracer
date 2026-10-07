@@ -63,13 +63,21 @@ We used Thrust to sort the rays and pathSegment data structures by materialID in
 
 ## 2. OBJ loading
 
-<!-- maybe a before and after render of a non triangle scene with now a triangle scene?? -->
+  | Before, no triangles  :( | After, yay triangles |
+| ------------- | ------------- | 
+|<img src="img/README_images/notriangles.png" height="300" alt="Cover render" /> | <img src="img/README_images/render2_122it.png" height="300" alt="Monkeys render" /> | 
+
 This repo supports OBJ loading to render out triangle meshes. To support an arbitrary number of polys, we also combine our implementation with [bounding volume hierarchy acceleration structures](#bounding-volume-hierarchies) (in which we discuss the performance rendering out triangle meshes there). We utilized the [tinyobjloader](https://github.com/tinyobjloader/tinyobjloader) for file parsing.
 
 ## 3. Bounding Volume Hierarchies
 
-<!-- Show an image of the render after a certain amount of time passes, with and without bvh -->
 Bounding volume hierarchies significantly sped up our implementation. Without BVH, for each ray, we would have to test intersection with all triangles in our scene. With BVH, we can check whether it intersects a section of our mesh at a time, so that intersecting triangles in our scene takes up O(logN) time instead of O(N) time, where N is the number of triangles in our scene.
+
+  | 10 second render, No BVH (4 iterations) |  10 second render, With BVH (94 iterations) |
+| ------------- | ------------- | 
+|<img src="img/README_images/nobvh.png" height="300" alt="Cover render" /> | <img src="img/README_images/yesbvh.png" height="300" alt="Monkeys render" /> | 
+
+As we can see, in just 10 seconds, a BVH is able to render out 94 iterations for a teapot (6320 triangles), whereas without one, it is only able to render out 4 iterations.
 
 The BVH construction takes place on the CPU, while when testing intersections on the GPU, we use an iterative approach in order to determine whether a given ray intersects triangles in our scene or not.
 
@@ -79,43 +87,44 @@ Compared to a pure CPU approach with a BVH, we would have to test each ray indiv
 
 To further optimize a BVH compared to our current implementation, we could also include non-triangle primitives in our BVH data structure, and also test the closest bounding box in our scene first to see if any intersection occurs there rather than always testing the right child node first.
 
-Our graph below compares a GPU approach with no BVH vs BVH in our scene, with only a single diffuse material and area light. We see that TODO: name your observations here.
-<!-- Include a graph with no BVH vs BVH, x axis - number of triangles (diffuse), y-axis time to render 1000 iterations -->
+<!-- TODO: if you have time, compare iteration/sec vs no. triangles -->
 
 ## 4. Direct Lighting
+  With direct lighting, 30 seconds |  Naive implementation, 30 seconds | With direct lighting, 12 minutes (act as ground truth render) |
+| ------------- | ------------- | ------------- |
+|<img src="img/README_images/dl_snr/snr_DL_30sec.png" height="300" alt="Cover render" /> | <img src="img/README_images/naive_snr/30sec.png" height="300" alt="Monkeys render" /> | <img src="img/README_images/groundtruth_snr.png" height="300" alt="ground truth" /> |
 
-<!-- Include an image of direct lighting vs without for 5 iterations -->
+Direct lighting makes our renders converge with fewer iterations and less time than estimating without, since at each ray bounce, we sample how much direct light is also gathered there rather than waiting for our ray to eventually hit a light source at random. Furthermore, we are also able to render out scenes with point lights which would otherwise be impossible without direct lighting.
 
-Direct lighting makes our renders converge with fewer iterations than estimating without, since at each ray bounce, we sample how much direct light is also gathered there rather than waiting for our ray to eventually hit a light source at random. Furthermore, we are also able to render out scenes with point lights which would otherwise be impossible without direct lighting.
+Since direct lighting requires us to compute a "shadow ray" to check whether or not it intersects with other objects in the scene before it hits a light, this adds an additional O(logN) computational expense (if we use BVH; if not, then O(N)). However, we find that it is faster with direct lighting to achieve similar quality results (evaluated by SNR) compared to that without, on our computer, due to there always being lighting contribution at each ray bounce, and not requiring us to rely on hoping that we hit a light source at some ray bounce.
 
-Evaluating the scene with SNR, we see that our direct lighting implementation converges a lot faster than without:
+Below, we show the SNR vs the amount of time it takes to render out our scene (keep ray depth at 64, with BVH on, all diffuse materials, single area light). We choose to evaluate our metric based on time rather than the number of iterations on the x axis since it is already given that direct lighitng converges better per iteration, and in general, people care more about how much time it takes to get something done anyway.
 
-<!-- Compare SNR without direct lighting vs with direct lighting -->
-<!-- x axis - iteration count -->
-<!-- y-axis - SNR -->
+<img src="img/README_images/snr_comp.png" height="300" alt="ground truth" /> 
 
-Since direct lighting requires us to compute a "shadow ray" to check whether or not it intersects with other objects in the scene before it hits a light, this adds an additional O(logN) computational expense (if we use BVH; if not, then O(N)). However, we find that it is TODO: FASTER OR SLOWER with direct lighting to achieve similar quality results (evaluated by SNR)  compared to that without, on our computer.
-
-<!-- Compare how long it takes for direct lighting scene to get to similar SNR levels compared to direct lighting -->
-<!-- x axis - time -->
-<!-- y-axis - SNR -->
+According to the graph, we see that the linear signal to noise ratio of direct lighting shows much better quality compared to the naive implementation (around 30 times better).
 
 On the CPU, overall direct lighting computation/rendering a single pass with BVH would take O(MlogN) (M - number of rays in scene). On the GPU, this takes O(logN) due to multithreading with rays.
 
 In order to optimize it beyond our current implementation, we can choose to have a ray prioritize closer lights/lights that would bring a higher contribution to a path's final radiance compared to just randomly choosing a light to sample. More modern methods like ReSTIR also help to reuse samples in neihgboring pixels as well.
 
+here's a render using point lights
+
+<img src="img/README_images/pointlight.png" height="300" alt="ground truth" /> 
+
+
 ## 5. Dielectric Materials
 Dielectric materials are supported in this renderer, with a physically-accurate Fresnel reflectance calculation that utilizes Russian Roulette to determine whether or not to render our a reflective or transmissive material per pixel. 
 <!-- TODO: show the render with pure transmission -->
+
 | Dielectric material (IOR 2) | Purely specular | Purely transmissive |
 | ------------- | ------------- | ------------- |
 |<img src="img/README_images/render11_120it.png" height="300" alt="Cover render" /> | <img src="img/README_images/render12_132it.png" height="300" alt="Monkeys render" /> | <img src="img/README_images/render_pure_transmission.png" height="300" alt="Monkeys render" /> |
 
 Below, we show a dielectric material for 3 different indices of refraction, as well as what the Fresnel reflectance factor looks like for each IOR.
-<!-- TODO: show the same render with varying levels of IOR -->
+
 |  Water (IOR 1.3) |  Glass (IOR 1.5) | Diamond  (IOR 2.4) |
 | ------------- | ------------- | ------------- |
-
 |<img src="img/README_images/dragon_ior13.png" height="300" alt="Cover render" /> | <img src="img/README_images/dragon_ior15.png" height="300" alt="Monkeys render" /> | <img src="img/README_images/dragon_ior24.png" height="300" alt="Monkeys render" /> |
 |<img src="img/README_images/dragonfresnel_ior13.png" height="300" alt="Cover render" /> | <img src="img/README_images/dragonfresnel_ior15.png" height="300" alt="Monkeys render" /> | <img src="img/README_images/dragonfresnel_ioir24.png" height="300" alt="Monkeys render" /> |
 
@@ -145,6 +154,5 @@ In order to optimize our render beyond what we currently have, we could use a fa
 - [Physically Based Rendering: From Theory to Implementation (pbr-book.org)](https://pbr-book.org/4ed/contents)
 
 ## More renders yay
-<img src="img/README_images/render2_122it.png" height="300" alt=" render extra" /> 
 <img src="img/README_images/render8_469it.png" height="300" alt=" render extra" /> 
 <img src="img/README_images/render9_652it.png" height="300" alt=" render extra" /> 
