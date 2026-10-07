@@ -47,19 +47,36 @@ The repo uses CUDA kernels and the [Thrust library ](https://developer.nvidia.co
 ### 1.1. Stream-compacted Rays
 Used the Thrust library's stream compaction functionality, where we terminate rays if they are labeled to have 0 "remaining bounces" left (meaning, for example, either the ray at its current state doesn't intersect with anything in the scene, is behind the camera, has a throughput color of black, or total internal reflection for refractive materials).
 
-This method allows for faster renders, per iteration (see graph in Performance section below). For example, TODO: GIVE AN EXAMPLE CITED FROM THE GRAPH
+This method allows for faster renders, per iteration.
+
 #### Performance
-Compared without using stream compaction whatsoever in our code, ...
-<!-- TODO: write an analysis of the performance without stream compaction. -->
-<!-- two categories - with and without stream compaction -->
-<!-- y axis - time to render 1000 iterations -->
-<!-- x axis - ray depth -->
+Without stream compaction, it is much slower to render out. Using a cornell box scene with a fully reflective teapot (using BVH and direct lighting), we plot out the time it takes to render 100 frames vs ray depth, with and without stream compaction:
+
+<img src="img/README_images/streamcompactiongraph.png" height="300" alt="Cover render" />
+
+| Ray Depth | Without Stream Compaction (s) | With Stream Compaction (s) |
+| ---------- | ------------------------------ | --------------------------- |
+| 4         | 5.98                          | 5.65                       |
+| 8         | 10.76                         | 8.41                       |
+| 16        | 20.46                         | 9.98                       |
+| 32        | 38.10                         | 11.20                      |
+| 64        | 73.97                         | 12.21                      |
+
+Utilizing stream compaction yields a logarithmic trend when dealing with higher ray depths, whereas it takes linear time when increasing ray depth when we don't have stream compaction. This is due to portions of the rays getting terminated early with stream compaction, so overall per depth count, there are less rays to do work.
 
 ###  1.2. Sorting by Material ID
-We used Thrust to sort the rays and pathSegment data structures by materialID in order to improve performance in our renderer. TODO: why is it faster. We notice that performance begins to improve around X number of materials in our scene. 
-#### Performance
-<!-- x axis: number of diffuse materials in the scene (maybe like 5 points)-->
-<!-- y axis: time to render 1000 iterations -->
+We used Thrust to sort the intersections and pathSegment (ray) data structures by materialID in order to improve performance in our renderer. Theoretically, this is supposed to improve the time of our renderer; however, I noticed no difference, if not, slight adverse effects in implementation. For example, with 100k diffuse materials randomly assigned to 500k triangles in our scene, down below are the GPU profiling with and without material sorting:
+
+**With Material Sorting**
+
+shadeMaterial here takes 59.3% of the kernel processing, and around 3.65 seconds on average.
+Furthermore, there is slight overhead (but negligible, ~0.5 ms) in terms of sorting due to thrust::sort.
+<img src="img/README_images/withmatsort.png" height="300" alt="matsort profile with" /> 
+
+**Without Material Sorting**
+
+shadeMaterial takes 58.8% of kernel processing, takes on average 3.5 seconds. Less kernel groups due to thrust::sort not existing in the code.
+<img src="img/README_images/withoutmatsort.png" height="300" alt="matsort profile without" /> 
 
 ## 2. OBJ loading
 
@@ -75,9 +92,10 @@ Bounding volume hierarchies significantly sped up our implementation. Without BV
 
   | 10 second render, No BVH (4 iterations) |  10 second render, With BVH (94 iterations) |
 | ------------- | ------------- | 
-|<img src="img/README_images/nobvh.png" height="300" alt="Cover render" /> | <img src="img/README_images/yesbvh.png" height="300" alt="Monkeys render" /> | 
+|<img src="img/README_images/nobvh.png" height="300" alt="teapot render" /> | <img src="img/README_images/yesbvh.png" height="300" alt="teapot render" /> | 
+The teapot has a fully reflective material, and has 6320 triangles.
 
-As we can see, in just 10 seconds, a BVH is able to render out 94 iterations for a teapot (6320 triangles), whereas without one, it is only able to render out 4 iterations.
+As we can see, in just 10 seconds, a BVH is able to render out 94 iterations for a teapot, whereas without one, it is only able to render out 4 iterations.
 
 The BVH construction takes place on the CPU, while when testing intersections on the GPU, we use an iterative approach in order to determine whether a given ray intersects triangles in our scene or not.
 
@@ -98,9 +116,17 @@ Direct lighting makes our renders converge with fewer iterations and less time t
 
 Since direct lighting requires us to compute a "shadow ray" to check whether or not it intersects with other objects in the scene before it hits a light, this adds an additional O(logN) computational expense (if we use BVH; if not, then O(N)). However, we find that it is faster with direct lighting to achieve similar quality results (evaluated by SNR) compared to that without, on our computer, due to there always being lighting contribution at each ray bounce, and not requiring us to rely on hoping that we hit a light source at some ray bounce.
 
-Below, we show the SNR vs the amount of time it takes to render out our scene (keep ray depth at 64, with BVH on, all diffuse materials, single area light). We choose to evaluate our metric based on time rather than the number of iterations on the x axis since it is already given that direct lighitng converges better per iteration, and in general, people care more about how much time it takes to get something done anyway.
+Below, we show the linear SNR vs the amount of time it takes to render out our scene (keep ray depth at 64, with BVH on, all diffuse materials, single area light). We choose to evaluate our metric based on time rather than the number of iterations on the x axis since it is already given that direct lighitng converges better per iteration, and in general, people care more about how much time it takes to get something done anyway.
 
 <img src="img/README_images/snr_comp.png" height="300" alt="ground truth" /> 
+
+| Time (s) | SNR, Direct Lighting | SNR, Naive |
+|---------|---------------------|-----------|
+| 5        | 57.44                | 1.83       |
+| 10       | 107.81               | 2.71       |
+| 30       | 336.46               | 8.67       |
+| 60       | 717.40               | 23.91      |
+| 120      | 1600.71              | 62.11      |
 
 According to the graph, we see that the linear signal to noise ratio of direct lighting shows much better quality compared to the naive implementation (around 30 times better).
 
@@ -115,7 +141,6 @@ here's a render using point lights
 
 ## 5. Dielectric Materials
 Dielectric materials are supported in this renderer, with a physically-accurate Fresnel reflectance calculation that utilizes Russian Roulette to determine whether or not to render our a reflective or transmissive material per pixel. 
-<!-- TODO: show the render with pure transmission -->
 
 | Dielectric material (IOR 2) | Purely specular | Purely transmissive |
 | ------------- | ------------- | ------------- |
