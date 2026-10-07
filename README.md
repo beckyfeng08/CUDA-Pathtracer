@@ -109,20 +109,34 @@ Dielectric materials are supported in this renderer, with a physically-accurate 
 <!-- TODO: show the render with pure transmission -->
 | Dielectric material (IOR 2) | Purely specular | Purely transmissive |
 | ------------- | ------------- | ------------- |
-|<img src="img/README_images/render11_120it.png" height="300" alt="Cover render" /> | <img src="img/README_images/render12_132it.png" height="300" alt="Monkeys render" /> | <img src="img/README_images/render12_132it.png" height="300" alt="Monkeys render" /> |
+|<img src="img/README_images/render11_120it.png" height="300" alt="Cover render" /> | <img src="img/README_images/render12_132it.png" height="300" alt="Monkeys render" /> | <img src="img/README_images/render_pure_transmission.png" height="300" alt="Monkeys render" /> |
 
 Below, we show a dielectric material for 3 different indices of refraction, as well as what the Fresnel reflectance factor looks like for each IOR.
 <!-- TODO: show the same render with varying levels of IOR -->
 |  Water (IOR 1.3) |  Glass (IOR 1.5) | Diamond  (IOR 2.4) |
 | ------------- | ------------- | ------------- |
-|<img src="img/README_images/render11_120it.png" height="300" alt="Cover render" /> | <img src="img/README_images/render12_132it.png" height="300" alt="Monkeys render" /> | <img src="img/README_images/render12_132it.png" height="300" alt="Monkeys render" /> |
-|<img src="img/README_images/render11_120it.png" height="300" alt="Cover render" /> | <img src="img/README_images/render12_132it.png" height="300" alt="Monkeys render" /> | <img src="img/README_images/render12_132it.png" height="300" alt="Monkeys render" /> |
 
-For the dragon cornell box scene, comparing a dielectric material with IOR 1.3 to a pure reflective, pure transmissive, and pure diffuse material, it took TODO: X seconds to render out 1000 iterations compared to Y, Z, and W seconds respectively, with a ray depth of 64. TODO: verify: This performance impact is due to the amount of rays that end up getting terminated.
+|<img src="img/README_images/dragon_ior13.png" height="300" alt="Cover render" /> | <img src="img/README_images/dragon_ior15.png" height="300" alt="Monkeys render" /> | <img src="img/README_images/dragon_ior24.png" height="300" alt="Monkeys render" /> |
+|<img src="img/README_images/dragonfresnel_ior13.png" height="300" alt="Cover render" /> | <img src="img/README_images/dragonfresnel_ior15.png" height="300" alt="Monkeys render" /> | <img src="img/README_images/dragonfresnel_ioir24.png" height="300" alt="Monkeys render" /> |
+
+For the dragon cornell box scene which has 100,000 tris, comparing a dielectric material with IOR 2.0 to a pure reflective, pure transmissive, and pure diffuse material, it took 2.45 seconds to render out 5 iterations compared to 1.73, 49.3, and 5.71 seconds respectively, with a ray depth of 64. 
+
+The biggest bottleneck in our dielectric material is due to transmission. Looking into NVIDIA Nsight Systems, for a purely transmissive material, most of the compute goes towards computeIntersections (taking up 99.3% of the process). It yields ~14 seconds to compute per iteration, shown below.
+
+<img src="img/README_images/nsight_transmission.png" alt="nsight transmissive" /> 
+
+
+For a pure reflective material, we see that computeIntersections significantly speeds up. Each iteration takes only ~0.3 seconds, and this time, computeIntersections only takes up 49.5% of the process, shown below.
+
+<img src="img/README_images/nsight_reflective.png" alt="nsight reflective" /> 
+
+For dielectric materials, which combines both reflective and refractive materials, computeintersections takes up 65.9% - in between reflective and transmissive - as expected, since we are performing both material calculations. Furthermore, each iteration takes on average ~0.7 seconds, shown below.
+<img src="img/README_images/nsight_dielectric.png" alt="nsight dielectric" /> 
+
 
 Implementing dielectric materials on the GPU compared to the CPU yields a much faster result not just due to multithreading ray processes, but stream compaction allows us to terminate rays that end up having internal reflections or are reflected away.
 
-In order to optimize our render beyond what we currently have, we could use a faster Fresnel factor calculation like Schlick's (although this suffers from being less physically accurate). We could also use caustic-aware techniques that sample rays that would contribute to higher radiance than not.
+In order to optimize our render beyond what we currently have, we could use a faster Fresnel factor calculation like Schlick's (although this suffers from being less physically accurate). We could also use caustic-aware techniques that sample rays that would contribute to higher radiance than not, in order to improve performance for computeIntersections, which takes up the biggest portion of GPU compute.
 
 ## Acknowledgements
 - Horse, deer, and sheep sculptures taken from https://sketchfab.com/Miaolailai
