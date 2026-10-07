@@ -42,9 +42,9 @@ This GPU accelerated pathtracer uses CUDA kernels to efficiently render scenes (
 5. [Dielectric Materials](#dielectric-materials)
 6. [Acknowledgements](#acknowledgements)
 
-## 1. GPU Acceleration Details
+## GPU Acceleration Details
 The repo uses CUDA kernels and the [Thrust library ](https://developer.nvidia.com/thrust) for GPU acceleration.
-### 1.1. Stream-compacted Rays
+###  Stream-compacted Rays
 Used the Thrust library's stream compaction functionality, where we terminate rays if they are labeled to have 0 "remaining bounces" left (meaning, for example, either the ray at its current state doesn't intersect with anything in the scene, is behind the camera, has a throughput color of black, or total internal reflection for refractive materials).
 
 This method allows for faster renders, per iteration.
@@ -64,7 +64,7 @@ Without stream compaction, it is much slower to render out. Using a cornell box 
 
 Utilizing stream compaction yields a logarithmic trend when dealing with higher ray depths, whereas it takes linear time when increasing ray depth when we don't have stream compaction. This is due to portions of the rays getting terminated early with stream compaction, so overall per depth count, there are less rays to do work.
 
-###  1.2. Sorting by Material ID
+###   Sorting by Material ID
 We used Thrust to sort the intersections and pathSegment (ray) data structures by materialID in order to improve performance in our renderer. Theoretically, this is supposed to improve the time of our renderer; however, I noticed no difference, if not, slight adverse effects in implementation. For example, with 100k diffuse materials randomly assigned to 500k triangles in our scene, down below are the GPU profiling with and without material sorting:
 
 **With Material Sorting**
@@ -78,7 +78,7 @@ Furthermore, there is slight overhead (but negligible, ~0.5 ms) in terms of sort
 shadeMaterial takes 58.8% of kernel processing, takes on average 3.5 seconds. Less kernel groups due to thrust::sort not existing in the code.
 <img src="img/README_images/withoutmatsort.png" height="300" alt="matsort profile without" /> 
 
-## 2. OBJ loading
+## OBJ loading
 
   | Before, no triangles  :( | After, yay triangles |
 | ------------- | ------------- | 
@@ -86,7 +86,7 @@ shadeMaterial takes 58.8% of kernel processing, takes on average 3.5 seconds. Le
 
 This repo supports OBJ loading to render out triangle meshes. To support an arbitrary number of polys, we also combine our implementation with [bounding volume hierarchy acceleration structures](#bounding-volume-hierarchies) (in which we discuss the performance rendering out triangle meshes there). We utilized the [tinyobjloader](https://github.com/tinyobjloader/tinyobjloader) for file parsing.
 
-## 3. Bounding Volume Hierarchies
+## Bounding Volume Hierarchies
 
 Bounding volume hierarchies significantly sped up our implementation. Without BVH, for each ray, we would have to test intersection with all triangles in our scene. With BVH, we can check whether it intersects a section of our mesh at a time, so that intersecting triangles in our scene takes up O(logN) time instead of O(N) time, where N is the number of triangles in our scene.
 
@@ -107,7 +107,7 @@ To further optimize a BVH compared to our current implementation, we could also 
 
 <!-- TODO: if you have time, compare iteration/sec vs no. triangles -->
 
-## 4. Direct Lighting
+## Direct Lighting
   With direct lighting, 30 seconds |  Naive implementation, 30 seconds | With direct lighting, 12 minutes (act as ground truth render) |
 | ------------- | ------------- | ------------- |
 |<img src="img/README_images/dl_snr/snr_DL_30sec.png" height="300" alt="Cover render" /> | <img src="img/README_images/naive_snr/30sec.png" height="300" alt="Monkeys render" /> | <img src="img/README_images/groundtruth_snr.png" height="300" alt="ground truth" /> |
@@ -139,7 +139,7 @@ here's a render using point lights
 <img src="img/README_images/pointlight.png" height="300" alt="ground truth" /> 
 
 
-## 5. Dielectric Materials
+## Dielectric Materials
 Dielectric materials are supported in this renderer, with a physically-accurate Fresnel reflectance calculation that utilizes Russian Roulette to determine whether or not to render our a reflective or transmissive material per pixel. 
 
 | Dielectric material (IOR 2) | Purely specular | Purely transmissive |
